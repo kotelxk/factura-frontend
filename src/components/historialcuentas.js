@@ -192,7 +192,7 @@ const HistorialCuentas = ({ rol, provinciaAsignada }) => {
       state: { cuenta }
     });
   };
-const API_PDF = 'http://148.116.105.38:3001';
+const API_PDF = 'https://pdfvialidad.duckdns.org';
 
 const handleEliminar = async (cuenta) => {
   const documento = cuenta['Número de documento'];

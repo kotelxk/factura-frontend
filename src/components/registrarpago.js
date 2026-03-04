@@ -33,7 +33,7 @@ const RegistrarPago = ({ usuario, rol, provinciaAsignada }) => {
 
   const API_CUENTAS = 'https://sheetdb.io/api/v1/p8978jyevss5y';
   const API_EMPRESAS = 'https://sheetdb.io/api/v1/gcdb5tlodx6w5';
-  const API_PDF = 'http://148.116.105.38:3001';
+  const API_PDF = 'https://pdfvialidad.duckdns.org';
 
   const isProvincial = rol === 'PROVINCIAL';
   const provinciaUsuario = (provinciaAsignada || '').trim();
