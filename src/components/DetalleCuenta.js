@@ -17,7 +17,7 @@ const DetalleCuenta = ({ rol, provinciaAsignada }) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
-  const API_CONFIG = 'https://sheetdb.io/api/v1/gcdb5tlodx6w5';
+  const API_CONFIG = 'https://sheetdb.io/api/v1/d3yv1kl25t2da';
   const API_PDF = 'https://pdfvialidad.duckdns.org';
 
   const isProvincial = rol === 'PROVINCIAL';

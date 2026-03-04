@@ -25,7 +25,7 @@ const ConfigurarProvincias = () => {
     TipoServicio: ''
   });
 
-  const API_URL = 'https://sheetdb.io/api/v1/gcdb5tlodx6w5';
+  const API_URL = 'https://sheetdb.io/api/v1/d3yv1kl25t2da';
 
   useEffect(() => {
     fetchData();

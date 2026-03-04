@@ -17,7 +17,7 @@ const RegistrarUsuario = () => {
 
   const [listaProvincias, setListaProvincias] = useState([]);
 
-  const API_PROVINCIAS = 'https://sheetdb.io/api/v1/gcdb5tlodx6w5';
+  const API_PROVINCIAS = 'https://sheetdb.io/api/v1/d3yv1kl25t2da';
   const API_USUARIOS = 'https://sheetdb.io/api/v1/g9pctxnlt3t37';
 
   const [formData, setFormData] = useState({

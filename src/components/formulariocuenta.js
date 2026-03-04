@@ -42,7 +42,7 @@ const FormularioCuenta = ({ usuario, rol, provinciaAsignada }) => {
   const [snackbarMessage, setSnackbarMessage] = useState('');
   const [snackbarSeverity, setSnackbarSeverity] = useState('success');
 
-  const API_EMPRESAS = 'https://sheetdb.io/api/v1/gcdb5tlodx6w5';
+  const API_EMPRESAS = 'https://sheetdb.io/api/v1/d3yv1kl25t2da';
   const API_CLIENTES = 'https://sheetdb.io/api/v1/05qv2598vh1kf';
 
   const isProvincial = rol === 'PROVINCIAL';
