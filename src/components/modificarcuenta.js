@@ -38,7 +38,7 @@ const ModificarCuenta = ({ rol, provinciaAsignada }) => {
   const [subiendoPdf, setSubiendoPdf] = useState(false);
 
   const API_EMPRESAS = 'https://sheetdb.io/api/v1/d3yv1kl25t2da';
-  const API_CLIENTES = 'https://sheetdb.io/api/v1/05qv2598vh1kf';
+  const API_CLIENTES = 'https://sheetdb.io/api/v1/jyp4vv5ft2fq1';
 
   // AJUSTA esto si tu backend usa otra URL
   const API_PDF = 'https://pdfvialidad.duckdns.org';
