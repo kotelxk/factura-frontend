@@ -41,7 +41,7 @@ const ModificarCuenta = ({ rol, provinciaAsignada }) => {
   const API_CLIENTES = 'https://sheetdb.io/api/v1/jyp4vv5ft2fq1';
 
   // AJUSTA esto si tu backend usa otra URL
-  const API_PDF = 'https://pdfvialidad.duckdns.org';
+  const API_PDF = 'http://148.116.105.38.nip.io';
 
   const isProvincial = rol === 'PROVINCIAL';
   const provinciaUsuario = (provinciaAsignada || '').trim();
