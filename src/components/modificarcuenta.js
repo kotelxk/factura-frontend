@@ -48,6 +48,10 @@ const ModificarCuenta = ({ rol, provinciaAsignada }) => {
 
   const normalizeStr = (s) => s?.toString().toLowerCase().trim() || '';
 
+  const sanitizeAmount = (val) => {
+  if (!val) return '';
+  return val.toString().replace(/\./g, '').replace(/,/g, '.');
+};
   const blockedFields = [
     'Usuario registro cuenta',
     'Usuario de envío de firma',
@@ -332,6 +336,11 @@ const ModificarCuenta = ({ rol, provinciaAsignada }) => {
       patchData['Boleta PDF ID'] = nuevoPdfId;
       patchData['Boleta PDF nombre'] = nuevoPdfNombre;
 
+      Object.keys(patchData).forEach((key) => {
+  if (key && key.toLowerCase().includes('monto')) {
+    patchData[key] = sanitizeAmount(patchData[key]);
+  }
+});
       await actualizarCuentaPorDoc(decodeURIComponent(id), patchData);
 
       // Si se reemplazó el PDF y cambió el ID, borrar el anterior

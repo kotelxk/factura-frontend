@@ -40,6 +40,10 @@ const RegistrarPago = ({ usuario, rol, provinciaAsignada }) => {
 
   const normalizeStr = (s) => s?.toString().toLowerCase().trim() || '';
 
+  const sanitizeAmount = (val) => {
+  if (!val) return '';
+  return val.toString().replace(/\./g, '').replace(/,/g, '.');
+};
   const showSnackbar = (msg, sev) =>
     setSnackbar({ open: true, message: msg, severity: sev });
 
@@ -211,8 +215,8 @@ const RegistrarPago = ({ usuario, rol, provinciaAsignada }) => {
       const fechaFormateada = "'" + new Date(fechaPago).toISOString().split('T')[0];
 
       const res = await actualizarCuentaPorDoc(numeroDocumento, {
-        'Monto registrado': montoRegistrado,
-        'Monto pagado': montoPagado,
+        'Monto registrado': sanitizeAmount(montoRegistrado),
+        'Monto pagado': sanitizeAmount(montoPagado),
         'Fecha de pago': fechaFormateada,
         'Usuario registro pago': usuarioRegistroPago,
       });
@@ -225,8 +229,8 @@ const RegistrarPago = ({ usuario, rol, provinciaAsignada }) => {
             c['Número de documento'] === numeroDocumento
               ? {
                   ...c,
-                  'Monto registrado': montoRegistrado,
-                  'Monto pagado': montoPagado,
+                  'Monto registrado': sanitizeAmount(montoRegistrado),
+                  'Monto pagado': sanitizeAmount(montoPagado),
                   'Fecha de pago': fechaFormateada,
                   'Usuario registro pago': usuarioRegistroPago,
                 }
@@ -426,7 +430,7 @@ const RegistrarPago = ({ usuario, rol, provinciaAsignada }) => {
                     <Grid item xs={12} sm={6}>
                       <TextField
                         label="Monto Registrado"
-                        type="number"
+                        type="text"
                         fullWidth
                         required
                         value={montoRegistrado}
@@ -444,7 +448,7 @@ const RegistrarPago = ({ usuario, rol, provinciaAsignada }) => {
                     <Grid item xs={12} sm={6}>
                       <TextField
                         label="Monto Pagado"
-                        type="number"
+                        type="text"
                         fullWidth
                         required
                         value={montoPagado}

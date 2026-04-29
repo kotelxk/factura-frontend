@@ -63,6 +63,10 @@ const FormularioCuenta = ({ usuario, rol, provinciaAsignada }) => {
 
   const normalizeStr = (s) => s?.toString().toLowerCase().trim() || '';
 
+  const sanitizeAmount = (val) => {
+  if (!val) return '';
+  return val.toString().replace(/\./g, '').replace(/,/g, '.');
+};
   const obtenerUsuarioSesion = () => {
     try {
       const sessionRaw = localStorage.getItem('session');
@@ -246,7 +250,7 @@ const FormularioCuenta = ({ usuario, rol, provinciaAsignada }) => {
 
       const row = {
         'Número de documento': numeroDocumento,
-        'Monto total': montoTotal,
+        'Monto total': sanitizeAmount(montoTotal),
         'Número de cliente': clienteSeleccionado,
         'Nombre de empresa': nombreEmpresa,
         'Provincia': isProvincial ? provinciaUsuario : provincia,
@@ -419,7 +423,7 @@ const FormularioCuenta = ({ usuario, rol, provinciaAsignada }) => {
 
                       <TextField
                         label="Monto Total"
-                        type="number"
+                        type="text"
                         fullWidth
                         required
                         value={montoTotal}
