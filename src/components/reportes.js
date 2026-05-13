@@ -1353,65 +1353,77 @@ const Reportes = () => {
     </Grid>
 
     {/* SECCIÓN DE GRÁFICOS: Ahora con altura mínima y más espacio */}
-    <Grid container spacing={4}>
-      <Grid item xs={12} lg={6}>
-        <Paper sx={{ p: 4, borderRadius: 4, border: '1px solid #edf2f7', height: '100%', minHeight: 480 }}>
-          <Typography variant="h6" sx={{ fontWeight: 'bold', color: '#1e3a8a', mb: 3 }}>
-            Distribución por servicio
-          </Typography>
-          <Box sx={{ width: '100%', height: 380 }}>
-            <ResponsiveContainer width="100%" height="100%">
-              <PieChart>
-                <Pie
-                  data={datosGraficoServicios}
-                  dataKey="total"
-                  nameKey="nombre"
-                  cx="50%"
-                  cy="50%"
-                  outerRadius="85%"
-                  innerRadius="55%"
-                  paddingAngle={5}
-                >
-                  {datosGraficoServicios.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={COLORES[index % COLORES.length]} />
-                  ))}
-                </Pie>
-                <Tooltip formatter={(value) => formatMoney(value)} />
-                <Legend verticalAlign="bottom" wrapperStyle={{ paddingTop: '20px' }} />
-              </PieChart>
-            </ResponsiveContainer>
-          </Box>
-        </Paper>
-      </Grid>
+<Grid container spacing={4}>
+  <Grid item xs={12} lg={6}>
+    <Paper sx={{ p: 4, borderRadius: 4, border: '1px solid #edf2f7', height: '100%', minHeight: 480 }}>
+      <Typography variant="h6" sx={{ fontWeight: 'bold', color: '#1e3a8a', mb: 3 }}>
+        Distribución por servicio
+      </Typography>
+      <Box sx={{ width: '100%', height: 380 }}>
+        <ResponsiveContainer width="100%" height="100%">
+          <PieChart>
+            <Pie
+              data={datosGraficoServicios}
+              dataKey="total"
+              nameKey="nombre"
+              cx="50%"
+              cy="50%"
+              outerRadius="85%"
+              innerRadius="55%"
+              paddingAngle={5}
+              minAngle={5}
+            >
+              {datosGraficoServicios.map((entry, index) => (
+                <Cell key={`cell-${index}`} fill={COLORES[index % COLORES.length]} />
+              ))}
+            </Pie>
+            <Tooltip formatter={(value) => formatMoney(value)} />
+            <Legend verticalAlign="bottom" wrapperStyle={{ paddingTop: '20px' }} />
+          </PieChart>
+        </ResponsiveContainer>
+      </Box>
+    </Paper>
+  </Grid>
 
-      <Grid item xs={12} lg={6}>
-        <Paper sx={{ p: 4, borderRadius: 4, border: '1px solid #edf2f7', height: '100%', minHeight: 480 }}>
-          <Typography variant="h6" sx={{ fontWeight: 'bold', color: '#1e3a8a', mb: 3 }}>
-            Top empresas (Ranking)
-          </Typography>
-          <Box sx={{ width: '100%', height: 380 }}>
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart
-                data={resumenAnual.porEmpresa.slice(0, 6)}
-                layout="vertical"
-                margin={{ top: 5, right: 30, left: 40, bottom: 5 }}
-              >
-                <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} />
-                <XAxis type="number" hide />
-                <YAxis 
-                  dataKey="nombre" 
-                  type="category" 
-                  width={100} 
-                  tick={{ fontSize: 11, fontWeight: 'bold' }}
-                />
-                <Tooltip formatter={(value) => formatMoney(value)} cursor={{fill: '#f1f5f9'}} />
-                <Bar dataKey="total" fill="#3b82f6" radius={[0, 8, 8, 0]} barSize={35} />
-              </BarChart>
-            </ResponsiveContainer>
-          </Box>
-        </Paper>
-      </Grid>
-    </Grid>
+  <Grid item xs={12} lg={6}>
+    <Paper sx={{ p: 4, borderRadius: 4, border: '1px solid #edf2f7', height: '100%', minHeight: 480 }}>
+      <Typography variant="h6" sx={{ fontWeight: 'bold', color: '#1e3a8a', mb: 3 }}>
+        Top empresas (Ranking)
+      </Typography>
+      <Box sx={{ width: '100%', height: 380 }}>
+        <ResponsiveContainer width="100%" height="100%">
+          <BarChart
+            data={resumenAnual.porEmpresa.slice(0, 6)}
+            layout="vertical"
+            margin={{ top: 10, right: 45, left: 80, bottom: 20 }}
+          >
+            <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} />
+            <XAxis
+              type="number"
+              scale="log"
+              domain={[1, 'dataMax']}
+              tickFormatter={(value) => formatMoney(value)}
+            />
+            <YAxis 
+              dataKey="nombre" 
+              type="category" 
+              width={140} 
+              tick={{ fontSize: 11, fontWeight: 'bold' }}
+            />
+            <Tooltip formatter={(value) => formatMoney(value)} cursor={{ fill: '#f1f5f9' }} />
+            <Bar
+              dataKey="total"
+              fill="#3b82f6"
+              radius={[0, 8, 8, 0]}
+              barSize={35}
+              minPointSize={8}
+            />
+          </BarChart>
+        </ResponsiveContainer>
+      </Box>
+    </Paper>
+  </Grid>
+</Grid>
 
     {/* TABLAS DE TOTALES ENMARCADAS */}
     <Grid container spacing={4}>
