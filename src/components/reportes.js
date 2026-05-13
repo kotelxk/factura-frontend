@@ -1224,25 +1224,33 @@ const Reportes = () => {
                   <Alert severity="info">No hay datos para los filtros seleccionados.</Alert>
                 ) : (
                   <Box sx={{ width: '100%', height: 420 }}>
-                    <ResponsiveContainer>
-                      <LineChart data={datosGraficoProvincial}>
-                        <CartesianGrid strokeDasharray="3 3" />
-                        <XAxis dataKey="mes" />
-                        <YAxis tickFormatter={(v) => `$${(v || 0).toLocaleString('es-CL')}`} />
-                        <Tooltip formatter={(value) => formatMoney(value)} />
-                        <Legend />
-                        {tablaProvincial.map((fila, index) => (
-                          <Line
-                            key={fila.nombre}
-                            type="monotone"
-                            dataKey={fila.nombre}
-                            stroke={COLORES[index % COLORES.length]}
-                            strokeWidth={2.5}
-                            dot={{ r: 3 }}
-                          />
-                        ))}
-                      </LineChart>
-                    </ResponsiveContainer>
+                    <ResponsiveContainer width="100%" height={420}>
+  <LineChart
+    data={datosGraficoProvincial}
+    margin={{ top: 20, right: 40, left: 70, bottom: 20 }}
+  >
+    <CartesianGrid strokeDasharray="3 3" />
+    <XAxis dataKey="mes" />
+    <YAxis
+      width={120}
+      tickFormatter={(value) => formatMoney(value)}
+    />
+    <Tooltip formatter={(value) => formatMoney(value)} />
+    <Legend />
+
+    {tablaProvincial.map((provincia, index) => (
+      <Line
+        key={provincia.nombre}
+        type="monotone"
+        dataKey={provincia.nombre}
+        stroke={COLORES[index % COLORES.length]}
+        strokeWidth={2}
+        dot={{ r: 3 }}
+        activeDot={{ r: 5 }}
+      />
+    ))}
+  </LineChart>
+</ResponsiveContainer>
                   </Box>
                 )}
               </Paper>
