@@ -52,9 +52,7 @@ import {
   Legend,
   BarChart,
   Bar,
-  PieChart,
-  Pie,
-  Cell,
+  LabelList,
 } from 'recharts';
 
 const MESES = [
@@ -105,6 +103,45 @@ const parseMonto = (valor) => {
 const formatMoney = (valor) => {
   const numero = Number(valor || 0);
   return `$${numero.toLocaleString('es-CL')}`;
+};
+
+const formatMoneyAbreviado = (valor) => {
+  const numero = Number(valor || 0);
+
+  if (numero >= 1000000) {
+    return `$${(numero / 1000000).toLocaleString('es-CL', { maximumFractionDigits: 1 })} mill.`;
+  }
+
+  if (numero >= 1000) {
+    return `$${(numero / 1000).toLocaleString('es-CL', { maximumFractionDigits: 1 })} mil`;
+  }
+
+  return formatMoney(numero);
+};
+
+const calcularTotalVisual = (valor) => {
+  const numero = Number(valor || 0);
+  return Math.log10(Math.max(numero, 1));
+};
+
+const prepararDatosRanking = (items, limite = null) => {
+  const totalGeneral = items.reduce((acc, item) => acc + Number(item.total || 0), 0);
+  const visibles = limite ? items.slice(0, limite) : items;
+
+  return visibles
+    .filter((item) => Number(item.total || 0) > 0)
+    .map((item) => {
+      const total = Number(item.total || 0);
+      const porcentaje = totalGeneral > 0 ? (total / totalGeneral) * 100 : 0;
+
+      return {
+        ...item,
+        total,
+        totalVisual: calcularTotalVisual(total),
+        porcentaje,
+        etiqueta: `${formatMoneyAbreviado(total)} (${porcentaje.toLocaleString('es-CL', { maximumFractionDigits: 1 })}%)`,
+      };
+    });
 };
 
 const extraerAnio = (fila) => {
@@ -542,23 +579,12 @@ const Reportes = () => {
     return resumenAnual.porServicio;
   }, [resumenAnual]);
 
-  const datosGraficoEmpresasAnual = useMemo(() => {
-  return resumenAnual.porEmpresa
-    .slice(0, 6)
-    .filter((item) => item.total > 0)
-    .map((item) => ({
-      ...item,
-      totalVisual: Math.sqrt(item.total),
-    }));
+const datosGraficoEmpresasAnual = useMemo(() => {
+  return prepararDatosRanking(resumenAnual.porEmpresa, 6);
 }, [resumenAnual]);
 
 const datosGraficoServiciosVisual = useMemo(() => {
-  return datosGraficoServicios
-    .filter((item) => item.total > 0)
-    .map((item) => ({
-      ...item,
-      totalVisual: Math.sqrt(item.total),
-    }));
+  return prepararDatosRanking(datosGraficoServicios);
 }, [datosGraficoServicios]);
 
 
@@ -1373,84 +1399,116 @@ const datosGraficoServiciosVisual = useMemo(() => {
     </Grid>
 
     {/* SECCIÓN DE GRÁFICOS: Ahora con altura mínima y más espacio */}
+{/* SECCIÓN DE GRÁFICOS */}
 <Grid container spacing={4}>
   <Grid item xs={12} lg={6}>
-    <Paper sx={{ p: 4, borderRadius: 4, border: '1px solid #edf2f7', height: '100%', minHeight: 480 }}>
-      <Typography variant="h6" sx={{ fontWeight: 'bold', color: '#1e3a8a', mb: 3 }}>
+    <Paper sx={{ p: 4, borderRadius: 4, border: '1px solid #edf2f7', height: '100%', minHeight: 500 }}>
+      <Typography variant="h6" sx={{ fontWeight: 'bold', color: '#1e3a8a', mb: 0.5 }}>
         Distribución por servicio
       </Typography>
-      <Box sx={{ width: '100%', height: 380 }}>
-  <ResponsiveContainer width="100%" height="100%">
-    <BarChart
-      data={datosGraficoServiciosVisual}
-      layout="vertical"
-      margin={{ top: 10, right: 40, left: 90, bottom: 20 }}
-    >
-      <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} />
-      <XAxis type="number" hide />
-      <YAxis
-        dataKey="nombre"
-        type="category"
-        width={120}
-        tick={{ fontSize: 12, fontWeight: 'bold' }}
-      />
-      <Tooltip
-        formatter={(value, name, props) => [
-          formatMoney(props.payload.total),
-          'Monto anual'
-        ]}
-        cursor={{ fill: '#f1f5f9' }}
-      />
-      <Bar
-        dataKey="totalVisual"
-        fill="#1e3a8a"
-        radius={[0, 8, 8, 0]}
-        barSize={35}
-        minPointSize={12}
-      />
-    </BarChart>
-  </ResponsiveContainer>
-</Box>
+
+      <Typography variant="body2" sx={{ color: 'text.secondary', mb: 3 }}>
+        Vista ajustada para comparar categorías grandes y pequeñas. Los montos y porcentajes mostrados son reales.
+      </Typography>
+
+      {datosGraficoServiciosVisual.length === 0 ? (
+        <Alert severity="info">No hay datos de servicios para el año seleccionado.</Alert>
+      ) : (
+        <Box sx={{ width: '100%', height: 380 }}>
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart
+              data={datosGraficoServiciosVisual}
+              layout="vertical"
+              margin={{ top: 10, right: 185, left: 90, bottom: 20 }}
+            >
+              <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} />
+              <XAxis type="number" hide domain={[0, 'dataMax']} />
+              <YAxis
+                dataKey="nombre"
+                type="category"
+                width={120}
+                tick={{ fontSize: 12, fontWeight: 'bold' }}
+              />
+              <Tooltip
+                formatter={(value, name, props) => [
+                  formatMoney(props.payload.total),
+                  `Monto anual (${props.payload.porcentaje.toLocaleString('es-CL', { maximumFractionDigits: 1 })}%)`
+                ]}
+                cursor={{ fill: '#f1f5f9' }}
+              />
+              <Bar
+                dataKey="totalVisual"
+                fill="#1e3a8a"
+                radius={[0, 8, 8, 0]}
+                barSize={35}
+                minPointSize={18}
+              >
+                <LabelList
+                  dataKey="etiqueta"
+                  position="right"
+                  style={{ fill: '#334155', fontSize: 12, fontWeight: 700 }}
+                />
+              </Bar>
+            </BarChart>
+          </ResponsiveContainer>
+        </Box>
+      )}
     </Paper>
   </Grid>
 
   <Grid item xs={12} lg={6}>
-    <Paper sx={{ p: 4, borderRadius: 4, border: '1px solid #edf2f7', height: '100%', minHeight: 480 }}>
-      <Typography variant="h6" sx={{ fontWeight: 'bold', color: '#1e3a8a', mb: 3 }}>
-        Top empresas (Ranking)
+    <Paper sx={{ p: 4, borderRadius: 4, border: '1px solid #edf2f7', height: '100%', minHeight: 500 }}>
+      <Typography variant="h6" sx={{ fontWeight: 'bold', color: '#1e3a8a', mb: 0.5 }}>
+        Top empresas
       </Typography>
-      <Box sx={{ width: '100%', height: 380 }}>
-        <ResponsiveContainer width="100%" height="100%">
-          <BarChart
-  data={datosGraficoEmpresasAnual}
-  layout="vertical"
-  margin={{ top: 10, right: 40, left: 70, bottom: 20 }}
->
-  <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} />
-  <XAxis type="number" hide />
-  <YAxis 
-    dataKey="nombre" 
-    type="category" 
-    width={120} 
-    tick={{ fontSize: 11, fontWeight: 'bold' }}
-  />
-  <Tooltip
-    formatter={(value, name, props) => [
-      formatMoney(props.payload.total),
-      'Monto anual'
-    ]}
-    cursor={{ fill: '#f1f5f9' }}
-  />
-  <Bar
-    dataKey="totalVisual"
-    fill="#3b82f6"
-    radius={[0, 8, 8, 0]}
-    barSize={35}
-    minPointSize={12}
-  />
-</BarChart>
-        </ResponsiveContainer>
-      </Box>
+
+      <Typography variant="body2" sx={{ color: 'text.secondary', mb: 3 }}>
+        Ranking visual ajustado para evitar que las empresas con menor monto desaparezcan.
+      </Typography>
+
+      {datosGraficoEmpresasAnual.length === 0 ? (
+        <Alert severity="info">No hay datos de empresas para el año seleccionado.</Alert>
+      ) : (
+        <Box sx={{ width: '100%', height: 380 }}>
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart
+              data={datosGraficoEmpresasAnual}
+              layout="vertical"
+              margin={{ top: 10, right: 185, left: 90, bottom: 20 }}
+            >
+              <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} />
+              <XAxis type="number" hide domain={[0, 'dataMax']} />
+              <YAxis
+                dataKey="nombre"
+                type="category"
+                width={120}
+                interval={0}
+                tick={{ fontSize: 11, fontWeight: 'bold' }}
+              />
+              <Tooltip
+                formatter={(value, name, props) => [
+                  formatMoney(props.payload.total),
+                  `Monto anual (${props.payload.porcentaje.toLocaleString('es-CL', { maximumFractionDigits: 1 })}%)`
+                ]}
+                cursor={{ fill: '#f1f5f9' }}
+              />
+              <Bar
+                dataKey="totalVisual"
+                fill="#3b82f6"
+                radius={[0, 8, 8, 0]}
+                barSize={35}
+                minPointSize={18}
+              >
+                <LabelList
+                  dataKey="etiqueta"
+                  position="right"
+                  style={{ fill: '#334155', fontSize: 12, fontWeight: 700 }}
+                />
+              </Bar>
+            </BarChart>
+          </ResponsiveContainer>
+        </Box>
+      )}
     </Paper>
   </Grid>
 </Grid>
