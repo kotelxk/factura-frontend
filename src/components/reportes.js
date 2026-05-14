@@ -542,6 +542,26 @@ const Reportes = () => {
     return resumenAnual.porServicio;
   }, [resumenAnual]);
 
+  const datosGraficoEmpresasAnual = useMemo(() => {
+  return resumenAnual.porEmpresa
+    .slice(0, 6)
+    .filter((item) => item.total > 0)
+    .map((item) => ({
+      ...item,
+      totalVisual: Math.sqrt(item.total),
+    }));
+}, [resumenAnual]);
+
+const datosGraficoServiciosVisual = useMemo(() => {
+  return datosGraficoServicios
+    .filter((item) => item.total > 0)
+    .map((item) => ({
+      ...item,
+      totalVisual: Math.sqrt(item.total),
+    }));
+}, [datosGraficoServicios]);
+
+
   const renderSelectValue = (value, emptyLabel, options, getLabel = (v) => v) => {
     if (Array.isArray(value)) {
       if (value.length === 0) return emptyLabel;
@@ -1360,28 +1380,37 @@ const Reportes = () => {
         Distribución por servicio
       </Typography>
       <Box sx={{ width: '100%', height: 380 }}>
-        <ResponsiveContainer width="100%" height="100%">
-          <PieChart>
-            <Pie
-              data={datosGraficoServicios}
-              dataKey="total"
-              nameKey="nombre"
-              cx="50%"
-              cy="50%"
-              outerRadius="85%"
-              innerRadius="55%"
-              paddingAngle={5}
-              minAngle={5}
-            >
-              {datosGraficoServicios.map((entry, index) => (
-                <Cell key={`cell-${index}`} fill={COLORES[index % COLORES.length]} />
-              ))}
-            </Pie>
-            <Tooltip formatter={(value) => formatMoney(value)} />
-            <Legend verticalAlign="bottom" wrapperStyle={{ paddingTop: '20px' }} />
-          </PieChart>
-        </ResponsiveContainer>
-      </Box>
+  <ResponsiveContainer width="100%" height="100%">
+    <BarChart
+      data={datosGraficoServiciosVisual}
+      layout="vertical"
+      margin={{ top: 10, right: 40, left: 90, bottom: 20 }}
+    >
+      <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} />
+      <XAxis type="number" hide />
+      <YAxis
+        dataKey="nombre"
+        type="category"
+        width={120}
+        tick={{ fontSize: 12, fontWeight: 'bold' }}
+      />
+      <Tooltip
+        formatter={(value, name, props) => [
+          formatMoney(props.payload.total),
+          'Monto anual'
+        ]}
+        cursor={{ fill: '#f1f5f9' }}
+      />
+      <Bar
+        dataKey="totalVisual"
+        fill="#1e3a8a"
+        radius={[0, 8, 8, 0]}
+        barSize={35}
+        minPointSize={12}
+      />
+    </BarChart>
+  </ResponsiveContainer>
+</Box>
     </Paper>
   </Grid>
 
@@ -1393,32 +1422,33 @@ const Reportes = () => {
       <Box sx={{ width: '100%', height: 380 }}>
         <ResponsiveContainer width="100%" height="100%">
           <BarChart
-            data={resumenAnual.porEmpresa.slice(0, 6)}
-            layout="vertical"
-            margin={{ top: 10, right: 45, left: 80, bottom: 20 }}
-          >
-            <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} />
-            <XAxis
-              type="number"
-              scale="log"
-              domain={[1, 'dataMax']}
-              tickFormatter={(value) => formatMoney(value)}
-            />
-            <YAxis 
-              dataKey="nombre" 
-              type="category" 
-              width={140} 
-              tick={{ fontSize: 11, fontWeight: 'bold' }}
-            />
-            <Tooltip formatter={(value) => formatMoney(value)} cursor={{ fill: '#f1f5f9' }} />
-            <Bar
-              dataKey="total"
-              fill="#3b82f6"
-              radius={[0, 8, 8, 0]}
-              barSize={35}
-              minPointSize={8}
-            />
-          </BarChart>
+  data={datosGraficoEmpresasAnual}
+  layout="vertical"
+  margin={{ top: 10, right: 40, left: 70, bottom: 20 }}
+>
+  <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} />
+  <XAxis type="number" hide />
+  <YAxis 
+    dataKey="nombre" 
+    type="category" 
+    width={120} 
+    tick={{ fontSize: 11, fontWeight: 'bold' }}
+  />
+  <Tooltip
+    formatter={(value, name, props) => [
+      formatMoney(props.payload.total),
+      'Monto anual'
+    ]}
+    cursor={{ fill: '#f1f5f9' }}
+  />
+  <Bar
+    dataKey="totalVisual"
+    fill="#3b82f6"
+    radius={[0, 8, 8, 0]}
+    barSize={35}
+    minPointSize={12}
+  />
+</BarChart>
         </ResponsiveContainer>
       </Box>
     </Paper>
