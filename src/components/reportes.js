@@ -119,11 +119,6 @@ const formatMoneyAbreviado = (valor) => {
   return formatMoney(numero);
 };
 
-const calcularTotalVisual = (valor) => {
-  const numero = Number(valor || 0);
-  return Math.log10(Math.max(numero, 1));
-};
-
 const prepararDatosRanking = (items, limite = null) => {
   const totalGeneral = items.reduce((acc, item) => acc + Number(item.total || 0), 0);
   const visibles = limite ? items.slice(0, limite) : items;
@@ -137,7 +132,6 @@ const prepararDatosRanking = (items, limite = null) => {
       return {
         ...item,
         total,
-        totalVisual: calcularTotalVisual(total),
         porcentaje,
         etiqueta: `${formatMoneyAbreviado(total)} (${porcentaje.toLocaleString('es-CL', { maximumFractionDigits: 1 })}%)`,
       };
@@ -1408,7 +1402,7 @@ const datosGraficoServiciosVisual = useMemo(() => {
       </Typography>
 
       <Typography variant="body2" sx={{ color: 'text.secondary', mb: 3 }}>
-        Vista ajustada para comparar categorías grandes y pequeñas. Los montos y porcentajes mostrados son reales.
+Distribución real del gasto anual. Las barras representan montos reales y las etiquetas muestran monto y porcentaje.
       </Typography>
 
       {datosGraficoServiciosVisual.length === 0 ? (
@@ -1437,12 +1431,12 @@ const datosGraficoServiciosVisual = useMemo(() => {
                 cursor={{ fill: '#f1f5f9' }}
               />
               <Bar
-                dataKey="totalVisual"
-                fill="#1e3a8a"
-                radius={[0, 8, 8, 0]}
-                barSize={35}
-                minPointSize={18}
-              >
+  dataKey="total"
+  fill="#1e3a8a"
+  radius={[0, 8, 8, 0]}
+  barSize={35}
+  minPointSize={3}
+>
                 <LabelList
                   dataKey="etiqueta"
                   position="right"
@@ -1463,8 +1457,7 @@ const datosGraficoServiciosVisual = useMemo(() => {
       </Typography>
 
       <Typography variant="body2" sx={{ color: 'text.secondary', mb: 3 }}>
-        Ranking visual ajustado para evitar que las empresas con menor monto desaparezcan.
-      </Typography>
+Ranking real por monto anual. Las empresas menores pueden verse pequeñas porque su participación es inferior al 1%.      </Typography>
 
       {datosGraficoEmpresasAnual.length === 0 ? (
         <Alert severity="info">No hay datos de empresas para el año seleccionado.</Alert>
@@ -1493,12 +1486,12 @@ const datosGraficoServiciosVisual = useMemo(() => {
                 cursor={{ fill: '#f1f5f9' }}
               />
               <Bar
-                dataKey="totalVisual"
-                fill="#3b82f6"
-                radius={[0, 8, 8, 0]}
-                barSize={35}
-                minPointSize={18}
-              >
+  dataKey="total"
+  fill="#3b82f6"
+  radius={[0, 8, 8, 0]}
+  barSize={35}
+  minPointSize={3}
+>
                 <LabelList
                   dataKey="etiqueta"
                   position="right"
