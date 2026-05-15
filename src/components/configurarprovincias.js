@@ -71,46 +71,160 @@ const ConfigurarProvincias = () => {
     return [...new Set(tipos)].sort();
   }, [data]);
 
-  const handleAddEmpresa = async () => {
-    if (
-      !nuevaEmpresaData.Empresa.trim() ||
-      !nuevaEmpresaData.RUT.trim() ||
-      !nuevaEmpresaData.Provincias.trim() ||
-      !nuevaEmpresaData.TipoServicio.trim()
-    ) {
-      setError('Por favor rellena nombre, RUT, provincias y tipo de servicio.');
-      return;
-    }
+  const normalizarTexto = (texto) =>
+  texto
+    ?.toString()
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim() || '';
 
-    try {
-      const primeraFila = data[0] || {};
-      const registroParaEnviar = {
-        [getRealKey(primeraFila, 'Empresa')]: nuevaEmpresaData.Empresa.trim(),
-        [getRealKey(primeraFila, 'RUT Empresa')]: nuevaEmpresaData.RUT.trim(),
-        [getRealKey(primeraFila, 'Provincias')]: nuevaEmpresaData.Provincias.trim(),
-        [getRealKey(primeraFila, 'Tipo de servicio')]: nuevaEmpresaData.TipoServicio.trim(),
-      };
+const calcularDistancia = (a, b) => {
+  const matrix = Array.from({ length: a.length + 1 }, () =>
+    Array(b.length + 1).fill(0)
+  );
 
-      await axios.post(
-        API_URL,
-        { data: [registroParaEnviar] },
-        { headers: { 'Content-Type': 'application/json' } }
+  for (let i = 0; i <= a.length; i++) matrix[i][0] = i;
+  for (let j = 0; j <= b.length; j++) matrix[0][j] = j;
+
+  for (let i = 1; i <= a.length; i++) {
+    for (let j = 1; j <= b.length; j++) {
+      const costo = a[i - 1] === b[j - 1] ? 0 : 1;
+
+      matrix[i][j] = Math.min(
+        matrix[i - 1][j] + 1,
+        matrix[i][j - 1] + 1,
+        matrix[i - 1][j - 1] + costo
       );
-
-      setSuccess('Nueva empresa registrada correctamente.');
-      setNuevaEmpresaData({
-        Empresa: '',
-        RUT: '',
-        Provincias: '',
-        TipoServicio: ''
-      });
-
-      fetchData();
-    } catch (err) {
-      console.error(err);
-      setError('Error al intentar agregar la empresa.');
     }
-  };
+  }
+
+  return matrix[a.length][b.length];
+};
+
+const obtenerProvinciasExistentes = () => {
+  const provincias = [];
+
+  data.forEach((fila) => {
+    const keyProvincias = getRealKey(fila, 'Provincias');
+    const provinciasStr = fila[keyProvincias] || '';
+
+    provinciasStr
+      .split(',')
+      .map((p) => p.trim())
+      .filter(Boolean)
+      .forEach((provincia) => {
+        if (!provincias.some((p) => normalizarTexto(p) === normalizarTexto(provincia))) {
+          provincias.push(provincia);
+        }
+      });
+  });
+
+  return provincias;
+};
+
+const buscarProvinciaParecida = (provinciaIngresada) => {
+  const provinciasExistentes = obtenerProvinciasExistentes();
+  const provinciaNormalizada = normalizarTexto(provinciaIngresada);
+
+  const exacta = provinciasExistentes.find(
+    (prov) => normalizarTexto(prov) === provinciaNormalizada
+  );
+
+  if (exacta) {
+    return { tipo: 'exacta', provincia: exacta };
+  }
+
+  let mejorCoincidencia = null;
+  let mejorSimilitud = 0;
+
+  provinciasExistentes.forEach((provinciaExistente) => {
+    const existenteNormalizada = normalizarTexto(provinciaExistente);
+    const distancia = calcularDistancia(provinciaNormalizada, existenteNormalizada);
+    const largoMayor = Math.max(provinciaNormalizada.length, existenteNormalizada.length);
+    const similitud = largoMayor === 0 ? 0 : 1 - distancia / largoMayor;
+
+    if (similitud > mejorSimilitud) {
+      mejorSimilitud = similitud;
+      mejorCoincidencia = provinciaExistente;
+    }
+  });
+
+  if (mejorSimilitud >= 0.75) {
+    return { tipo: 'parecida', provincia: mejorCoincidencia };
+  }
+
+  return null;
+};
+
+const procesarProvinciaIngresada = (provinciaIngresada) => {
+  const provinciaLimpia = provinciaIngresada.trim();
+  if (!provinciaLimpia) return '';
+
+  const coincidencia = buscarProvinciaParecida(provinciaLimpia);
+
+  if (!coincidencia) return provinciaLimpia;
+
+  if (coincidencia.tipo === 'exacta') {
+    return coincidencia.provincia;
+  }
+
+  const usarSugerida = window.confirm(
+    `La provincia "${provinciaLimpia}" se parece a "${coincidencia.provincia}". ¿Deseas usar "${coincidencia.provincia}"?`
+  );
+
+  return usarSugerida ? coincidencia.provincia : provinciaLimpia;
+};
+
+
+  const handleAddEmpresa = async () => {
+  if (
+    !nuevaEmpresaData.Empresa.trim() ||
+    !nuevaEmpresaData.RUT.trim() ||
+    !nuevaEmpresaData.Provincias.trim() ||
+    !nuevaEmpresaData.TipoServicio.trim()
+  ) {
+    setError('Por favor rellena nombre, RUT, provincias y tipo de servicio.');
+    return;
+  }
+
+  try {
+    const primeraFila = data[0] || {};
+
+    const provinciasProcesadas = nuevaEmpresaData.Provincias
+      .split(',')
+      .map((p) => procesarProvinciaIngresada(p))
+      .filter(Boolean)
+      .join(', ');
+
+    const registroParaEnviar = {
+      [getRealKey(primeraFila, 'Empresa')]: nuevaEmpresaData.Empresa.trim(),
+      [getRealKey(primeraFila, 'RUT Empresa')]: nuevaEmpresaData.RUT.trim(),
+      [getRealKey(primeraFila, 'Provincias')]: provinciasProcesadas,
+      [getRealKey(primeraFila, 'Tipo de servicio')]: nuevaEmpresaData.TipoServicio.trim(),
+    };
+
+    await axios.post(
+      API_URL,
+      { data: [registroParaEnviar] },
+      { headers: { 'Content-Type': 'application/json' } }
+    );
+
+    setSuccess('Nueva empresa registrada correctamente.');
+    setNuevaEmpresaData({
+      Empresa: '',
+      RUT: '',
+      Provincias: '',
+      TipoServicio: ''
+    });
+
+    fetchData();
+  } catch (err) {
+    console.error(err);
+    setError('Error al intentar agregar la empresa.');
+  }
+};
 
   const handleDeleteEmpresa = async (empresaIndex) => {
     const fila = data[empresaIndex];
@@ -157,8 +271,10 @@ const ConfigurarProvincias = () => {
   };
 
   const handleAddProvincia = async (empresaIndex) => {
-    const textoNueva = (nuevaProvincia[empresaIndex] || '').trim();
-    if (!textoNueva) return;
+    const textoNuevaOriginal = (nuevaProvincia[empresaIndex] || '').trim();
+if (!textoNuevaOriginal) return;
+
+const textoNueva = procesarProvinciaIngresada(textoNuevaOriginal);
 
     const fila = data[empresaIndex];
     const keyEmpresa = getRealKey(fila, 'Empresa');
