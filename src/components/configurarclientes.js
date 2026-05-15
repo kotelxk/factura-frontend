@@ -17,7 +17,7 @@ const ConfigurarClientes = () => {
   const [mapaProvincias, setMapaProvincias] = useState([]);
 
   const API_CLIENTES = 'https://sheetdb.io/api/v1/jyp4vv5ft2fq1';
-  const API_PROVINCIAS = 'https://sheetdb.io/api/v1/gcdb5tlodx6w5';
+  const API_PROVINCIAS = 'https://sheetdb.io/api/v1/d3yv1kl25t2da';
 
   const [nuevoCliente, setNuevoCliente] = useState({
     'Empresa': '',
