@@ -43,7 +43,7 @@ const FormularioCuenta = ({ usuario, rol, provinciaAsignada }) => {
   const [snackbarSeverity, setSnackbarSeverity] = useState('success');
 
   const API_EMPRESAS = 'https://sheetdb.io/api/v1/d3yv1kl25t2da';
-  const API_CLIENTES = 'https://sheetdb.io/api/v1/jyp4vv5ft2fq1';
+  const API_CLIENTES_USO = 'https://sheetdb.io/api/v1/mtu8oxl8r0yud';
 
   const isProvincial = rol === 'PROVINCIAL';
   const provinciaUsuario = (provinciaAsignada || '').trim();
@@ -90,7 +90,7 @@ const FormularioCuenta = ({ usuario, rol, provinciaAsignada }) => {
     try {
       const [resEmpresas, resClientes] = await Promise.all([
         axios.get(API_EMPRESAS),
-        axios.get(API_CLIENTES)
+        axios.get(API_CLIENTES_USO)
       ]);
 
       setTodosLosClientes(resClientes.data);

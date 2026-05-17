@@ -16,8 +16,8 @@ const ConfigurarClientes = () => {
   const [editedClientes, setEditedClientes] = useState([]);
   const [mapaProvincias, setMapaProvincias] = useState([]);
 
-  const API_CLIENTES = 'https://sheetdb.io/api/v1/jyp4vv5ft2fq1';
-  const API_PROVINCIAS = 'https://sheetdb.io/api/v1/d3yv1kl25t2da';
+  const API_CLIENTES_CONFIG = 'https://sheetdb.io/api/v1/jyp4vv5ft2fq1';
+  const API_PROVINCIAS = 'https://sheetdb.io/api/v1/w3bi3nugb8x4b';
 
   const [nuevoCliente, setNuevoCliente] = useState({
     'Empresa': '',
@@ -50,7 +50,7 @@ const ConfigurarClientes = () => {
     setLoading(true);
     try {
       const [resClientes, resProvincias] = await Promise.all([
-        axios.get(API_CLIENTES),
+        axios.get(API_CLIENTES_CONFIG),
         axios.get(API_PROVINCIAS)
       ]);
       const listaOrdenada = ordenarLista(resClientes.data);
@@ -98,7 +98,7 @@ const ConfigurarClientes = () => {
         [getRealKey(clientesOriginales[0] || {}, 'Direccion')]: nuevoCliente.Direccion,
         [getRealKey(clientesOriginales[0] || {}, 'Provincia')]: nuevoCliente.Provincia
       };
-      await axios.post(API_CLIENTES, { data: [registro] });
+      await axios.post(API_CLIENTES_CONFIG, { data: [registro] });
       setSuccess('Cliente agregado y organizado en la lista.');
       setNuevoCliente({ Empresa: '', 'Cliente asociado': '', Direccion: '', Provincia: '' });
       cargarTodo();
@@ -110,7 +110,7 @@ const ConfigurarClientes = () => {
     const actualizado = editedClientes[index];
     const idCol = getRealKey(original, 'Cliente asociado');
     try {
-      await axios.put(`${API_CLIENTES}/${idCol}/${encodeURIComponent(original[idCol])}`, { data: actualizado });
+      await axios.put(`${API_CLIENTES_CONFIG}/${idCol}/${encodeURIComponent(original[idCol])}`, { data: actualizado });
       setSuccess('Cambios guardados.');
       cargarTodo();
     } catch (err) { setError('Error al actualizar.'); }
@@ -121,7 +121,7 @@ const ConfigurarClientes = () => {
     const idCol = getRealKey(original, 'Cliente asociado');
     if (!window.confirm(`¿Eliminar definitivamente al cliente ${original[idCol]}?`)) return;
     try {
-      await axios.delete(`${API_CLIENTES}/${idCol}/${encodeURIComponent(original[idCol])}`);
+      await axios.delete(`${API_CLIENTES_CONFIG}/${idCol}/${encodeURIComponent(original[idCol])}`);
       setSuccess('Cliente eliminado de la base de datos.');
       cargarTodo();
     } catch (err) { setError('Error al eliminar.'); }

@@ -37,8 +37,8 @@ const ModificarCuenta = ({ rol, provinciaAsignada }) => {
   const [nuevoPdf, setNuevoPdf] = useState(null);
   const [subiendoPdf, setSubiendoPdf] = useState(false);
 
-  const API_EMPRESAS = 'https://sheetdb.io/api/v1/d3yv1kl25t2da';
-  const API_CLIENTES = 'https://sheetdb.io/api/v1/jyp4vv5ft2fq1';
+  const API_EMPRESAS = 'https://sheetdb.io/api/v1/w3bi3nugb8x4b';
+  const API_CLIENTES_USO = 'https://sheetdb.io/api/v1/mtu8oxl8r0yud';
 
   // AJUSTA esto si tu backend usa otra URL
   const API_PDF = 'https://148.116.105.38.nip.io';
@@ -106,7 +106,7 @@ const ModificarCuenta = ({ rol, provinciaAsignada }) => {
 
         const [resEmpresas, resClientes] = await Promise.all([
           axios.get(`${API_EMPRESAS}?t=${new Date().getTime()}`),
-          axios.get(`${API_CLIENTES}?t=${new Date().getTime()}`),
+          axios.get(`${API_CLIENTES_USO}?t=${new Date().getTime()}`),
         ]);
 
         setEmpresasConfig(resEmpresas.data || []);

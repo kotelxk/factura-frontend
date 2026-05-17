@@ -25,7 +25,7 @@ const HistorialCuentas = ({ rol, provinciaAsignada }) => {
 
   const navigate = useNavigate();
 
-  const API_CUENTAS = 'https://sheetdb.io/api/v1/zlfy6np1k0lrt';
+  const API_CUENTAS = 'https://sheetdb.io/api/v1/wp5un7ffg6ifc';
   const API_EMPRESAS = 'https://sheetdb.io/api/v1/d3yv1kl25t2da';
 
   const isProvincial = rol === 'PROVINCIAL';
