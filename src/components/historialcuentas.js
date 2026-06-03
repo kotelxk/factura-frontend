@@ -44,6 +44,30 @@ const HistorialCuentas = ({ rol, provinciaAsignada }) => {
 
   const normalizeStr = (s) => s?.toString().toLowerCase().trim() || '';
 
+  const formatMoney = (valor) => {
+  if (
+    valor === undefined ||
+    valor === null ||
+    valor === '' ||
+    valor?.toString().trim().toLowerCase() === 'null'
+  ) {
+    return 'null';
+  }
+
+  const limpio = valor
+    .toString()
+    .replace(/\$/g, '')
+    .replace(/\./g, '')
+    .replace(/,/g, '')
+    .trim();
+
+  const numero = Number(limpio);
+
+  if (!Number.isFinite(numero)) return valor;
+
+  return `$${numero.toLocaleString('es-CL')}`;
+};
+
   useEffect(() => {
     cargarDatosExternos();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -362,7 +386,7 @@ const handleEliminar = async (cuenta) => {
                             sx={{ '&:nth-of-type(odd)': { backgroundColor: '#f7f7f7' } }}
                           >
                             <TableCell>{cuenta['Número de documento'] || 'No disponible'}</TableCell>
-                            <TableCell>{cuenta['Monto total'] || 'No disponible'}</TableCell>
+                            <TableCell>{formatMoney(cuenta['Monto total']) || 'No disponible'}</TableCell>
                             <TableCell>{cuenta['Número de cliente'] || 'No disponible'}</TableCell>
                             <TableCell>{cuenta['Provincia'] || 'No disponible'}</TableCell>
                             <TableCell>{cuenta['Nombre de empresa'] || 'No disponible'}</TableCell>

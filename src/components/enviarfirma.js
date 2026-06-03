@@ -45,6 +45,31 @@ const EnviarFirma = ({ usuario, rol, provinciaAsignada }) => {
 
   const normalizeStr = (s) => s?.toString().toLowerCase().trim() || '';
 
+  const formatMoney = (valor) => {
+  if (
+    valor === undefined ||
+    valor === null ||
+    valor === '' ||
+    valor?.toString().trim().toLowerCase() === 'null'
+  ) {
+    return 'null';
+  }
+
+  const limpio = valor
+    .toString()
+    .replace(/\$/g, '')
+    .replace(/\./g, '')
+    .replace(/,/g, '')
+    .trim();
+
+  const numero = Number(limpio);
+
+  if (!Number.isFinite(numero)) return valor;
+
+  return `$${numero.toLocaleString('es-CL')}`;
+};
+
+
   const obtenerUsuarioSesion = () => {
     try {
       const sessionRaw = localStorage.getItem('session');
@@ -341,7 +366,7 @@ const EnviarFirma = ({ usuario, rol, provinciaAsignada }) => {
                             <TableCell sx={{ fontWeight: 'bold' }}>{cuenta['Número de documento']}</TableCell>
                             <TableCell>{cuenta['Mes de emisión']}</TableCell>
                             <TableCell>{cuenta['Fecha de recepción']}</TableCell>
-                            <TableCell>${cuenta['Monto total']}</TableCell>
+                            <TableCell>{formatMoney(cuenta['Monto total'])}</TableCell>
                             <TableCell>{cuenta['Nombre de empresa']}</TableCell>
                             <TableCell>{cuenta['Provincia']}</TableCell>
                             <TableCell>{cuenta['Número de cliente']}</TableCell>

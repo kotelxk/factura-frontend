@@ -36,6 +36,30 @@ const DetalleCuenta = ({ rol, provinciaAsignada }) => {
     return value;
   };
 
+  const formatMoney = (valor) => {
+  if (
+    valor === undefined ||
+    valor === null ||
+    valor === '' ||
+    valor?.toString().trim().toLowerCase() === 'null'
+  ) {
+    return 'null';
+  }
+
+  const limpio = valor
+    .toString()
+    .replace(/\$/g, '')
+    .replace(/\./g, '')
+    .replace(/,/g, '')
+    .trim();
+
+  const numero = Number(limpio);
+
+  if (!Number.isFinite(numero)) return valor;
+
+  return `$${numero.toLocaleString('es-CL')}`;
+};
+
   const renderFirmaStatus = () => {
     if (!cuenta) return 'null';
 
@@ -177,7 +201,7 @@ const DetalleCuenta = ({ rol, provinciaAsignada }) => {
               </Grid>
               <Grid item xs={12} sm={6}><Typography variant="body2"><strong>Mes de emisión:</strong> {showValue(cuenta['Mes de emisión'])}</Typography></Grid>
               <Grid item xs={12} sm={6}><Typography variant="body2"><strong>Provincia:</strong> {showValue(cuenta['Provincia'])}</Typography></Grid>
-              <Grid item xs={12} sm={6}><Typography variant="body2"><strong>Monto total:</strong> {showValue(cuenta['Monto total'])}</Typography></Grid>
+              <Grid item xs={12} sm={6}><Typography variant="body2"><strong>Monto total:</strong> {formatMoney(cuenta['Monto total'])}</Typography></Grid>
               <Grid item xs={12} sm={6}>
                 <Button
                   variant="outlined"
@@ -225,8 +249,8 @@ const DetalleCuenta = ({ rol, provinciaAsignada }) => {
             <Grid container spacing={2}>
               <Grid item xs={12} sm={6}><Typography variant="body2"><strong>Fecha pagada:</strong> {showValue(cuenta['Fecha de pago'])}</Typography></Grid>
               <Grid item xs={12} sm={6}><Typography variant="body2"><strong>Usuario registro pago:</strong> {showValue(cuenta['Usuario registro pago'])}</Typography></Grid>
-              <Grid item xs={12} sm={6}><Typography variant="body2"><strong>Monto pagado:</strong> {showValue(cuenta['Monto pagado'])}</Typography></Grid>
-              <Grid item xs={12} sm={6}><Typography variant="body2"><strong>Monto registrado:</strong> {showValue(cuenta['Monto registrado'])}</Typography></Grid>
+              <Grid item xs={12} sm={6}><Typography variant="body2"><strong>Monto pagado:</strong> {formatMoney(cuenta['Monto pagado'])}</Typography></Grid>
+              <Grid item xs={12} sm={6}><Typography variant="body2"><strong>Monto registrado:</strong> {formatMoney(cuenta['Monto registrado'])}</Typography></Grid>
             </Grid>
           </Box>
 

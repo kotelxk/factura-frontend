@@ -40,6 +40,23 @@ const EnviarPago = ({ usuario, rol, provinciaAsignada }) => {
 
   const handleSnackbarClose = () => setSnackbarOpen(false);
   const normalizeStr = (s) => s?.toString().toLowerCase().trim() || '';
+  const formatMoney = (valor) => {
+  if (valor === null || valor === undefined || valor === '') return '$0';
+
+  const limpio = valor
+    .toString()
+    .replace(/\$/g, '')
+    .replace(/\./g, '')
+    .replace(/,/g, '')
+    .trim();
+
+  const numero = Number(limpio);
+
+  if (!Number.isFinite(numero)) return `$${valor}`;
+
+  return `$${numero.toLocaleString('es-CL')}`;
+};
+
 
   const getValueByFlexibleKey = (obj, targetKey) => {
     const normalize = (str) =>
@@ -361,7 +378,7 @@ const EnviarPago = ({ usuario, rol, provinciaAsignada }) => {
                             <TableCell sx={{ fontWeight: 'bold' }}>{c['Número de documento']}</TableCell>
                             <TableCell>{c['Fecha de envío de firma']}</TableCell>
                             <TableCell>{c['Mes de emisión']}</TableCell>
-                            <TableCell>${c['Monto total']}</TableCell>
+                            <TableCell>{formatMoney(c['Monto total'])}</TableCell>
                             <TableCell>{c['Ubicación']}</TableCell>
                             <TableCell>{c['Número de cliente']}</TableCell>
                             <TableCell>{c['Nombre de empresa']}</TableCell>

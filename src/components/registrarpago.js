@@ -40,6 +40,31 @@ const RegistrarPago = ({ usuario, rol, provinciaAsignada }) => {
 
   const normalizeStr = (s) => s?.toString().toLowerCase().trim() || '';
 
+  const formatMoney = (valor) => {
+  if (
+    valor === undefined ||
+    valor === null ||
+    valor === '' ||
+    valor?.toString().trim().toLowerCase() === 'null'
+  ) {
+    return 'null';
+  }
+
+  const limpio = valor
+    .toString()
+    .replace(/\$/g, '')
+    .replace(/\./g, '')
+    .replace(/,/g, '')
+    .trim();
+
+  const numero = Number(limpio);
+
+  if (!Number.isFinite(numero)) return valor;
+
+  return `$${numero.toLocaleString('es-CL')}`;
+};
+
+
   const sanitizeAmount = (val) => {
   if (!val) return '';
   return val.toString().replace(/\./g, '').replace(/,/g, '.');
@@ -345,7 +370,9 @@ const RegistrarPago = ({ usuario, rol, provinciaAsignada }) => {
                             <TableCell sx={{ fontWeight: 'bold' }}>{c['Número de documento']}</TableCell>
                             <TableCell>{c['Fecha de envío de firma']}</TableCell>
                             <TableCell>{c['Fecha de envío de pago']}</TableCell>
-                            <TableCell sx={{ fontWeight: 'bold', color: '#2e7d32' }}>${c['Monto total']}</TableCell>
+                            <TableCell sx={{ fontWeight: 'bold', color: '#2e7d32' }}>
+  {formatMoney(c['Monto total'])}
+</TableCell>
                             <TableCell>{c['Ubicación']}</TableCell>
                             <TableCell>{c['Número de cliente']}</TableCell>
                             <TableCell>{c['Nombre de empresa']}</TableCell>
