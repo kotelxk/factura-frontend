@@ -32,7 +32,7 @@ const EnviarPago = ({ usuario, rol, provinciaAsignada }) => {
   const [snackbarSeverity, setSnackbarSeverity] = useState('info');
 
   const API_CUENTAS = 'https://sheetdb.io/api/v1/zlfy6np1k0lrt';
-  const API_EMPRESAS = 'https://sheetdb.io/api/v1/gcdb5tlodx6w5';
+  const API_EMPRESAS = 'https://sheetdb.io/api/v1/d3yv1kl25t2da';
   const API_PDF = 'https://148.116.105.38.nip.io';
 
   const isProvincial = rol === 'PROVINCIAL';
