@@ -1,7 +1,7 @@
 import axios from "axios";
 
 // ===== FACTURAS =====
-export const FACTURAS_BASE = "https://sheetdb.io/api/v1/p8978jyevss5y";
+export const FACTURAS_BASE = "https://sheetdb.io/api/v1/qa371cvkeyczm";
 export const COL_NUM_DOC = "Número de documento";
 
 // ===== USUARIOS =====
