@@ -1,4 +1,3 @@
-import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import {
   Container, Typography, Table, TableBody, TableCell, TableContainer,
@@ -6,6 +5,11 @@ import {
   Snackbar, Alert, Stack, Paper, Select, MenuItem
 } from '@mui/material';
 import SaveIcon from '@mui/icons-material/Save';
+import {
+  consultarEmpresasMaul,
+  obtenerVersionCacheEmpresas
+} from '../services/empresasCache';
+import React, { useState, useEffect, useRef } from 'react';
 import DeleteIcon from '@mui/icons-material/Delete';
 
 const MostrarUsuarios = () => {
@@ -16,9 +20,10 @@ const MostrarUsuarios = () => {
   const [usuariosOriginales, setUsuariosOriginales] = useState([]);
   const [editedUsuarios, setEditedUsuarios] = useState([]);
   const [listaProvincias, setListaProvincias] = useState([]);
+  const montado = useRef(false);
+const idCarga = useRef(0);
 
   const API_USUARIOS = 'https://sheetdb.io/api/v1/g9pctxnlt3t37';
-  const API_PROVINCIAS = 'https://sheetdb.io/api/v1/w3bi3nugb8x4b';
 
   const getValueByFlexibleKey = (obj, targetKey) => {
     const normalize = (str) =>
@@ -28,60 +33,113 @@ const MostrarUsuarios = () => {
     return foundKey ? obj[foundKey] : null;
   };
 
-  useEffect(() => {
-    fetchData();
-  }, []);
+  
+useEffect(() => {
+  montado.current = true;
 
-  const fetchData = async () => {
-    setLoading(true);
-    setError('');
-    setSuccess('');
+  fetchData();
 
-    try {
-      const [resUsers, resProv] = await Promise.all([
-        axios.get(`${API_USUARIOS}?t=${new Date().getTime()}`),
-        axios.get(`${API_PROVINCIAS}?t=${new Date().getTime()}`)
-      ]);
+  return () => {
+    montado.current = false;
+  };
 
-      const provs = new Set();
+}, []);
 
-      resProv.data.forEach((item) => {
-        const provinciasStr = getValueByFlexibleKey(item, 'Provincias') || '';
-        provinciasStr
-          .split(',')
-          .map((p) => p.trim())
-          .filter(Boolean)
-          .forEach((p) => provs.add(p));
-      });
+const fetchData = async () => {
+  if (!montado.current) return;
 
-      setListaProvincias(Array.from(provs).sort());
+  const idActual = ++idCarga.current;
 
-      const usuariosNormalizados = (resUsers.data || []).map((u) => {
-        const rolRaw = (u['Rol'] || '').toString().trim();
-        const rol = rolRaw.toUpperCase();
-        let provincia = (u['Provincia asignada'] || '').toString().trim();
+  const estaVigente = () =>
+    montado.current && idCarga.current === idActual;
 
-        if (rol === 'ADMIN' || rol === 'REGIONAL') {
-          provincia = 'Todas';
-        }
+  setLoading(true);
+  setError('');
+  setSuccess('');
 
-        return {
-          ...u,
-          Usuario: (u['Usuario'] || '').toString().trim(),
-          Rol: rol,
-          'Provincia asignada': provincia,
-        };
-      });
+  try {
+    const versionInicial = obtenerVersionCacheEmpresas();
 
-      setUsuariosOriginales(usuariosNormalizados);
-      setEditedUsuarios(JSON.parse(JSON.stringify(usuariosNormalizados)));
-    } catch (err) {
-      console.error(err);
-      setError('Error al cargar usuarios o provincias.');
-    } finally {
+    const [resUsers, provinciasIniciales] = await Promise.all([
+      axios.get(`${API_USUARIOS}?t=${new Date().getTime()}`),
+      consultarEmpresasMaul()
+    ]);
+
+    if (!estaVigente()) return;
+
+    let resProv = provinciasIniciales;
+    let versionComprobada = versionInicial;
+
+    for (let intento = 0; intento < 3; intento++) {
+      const versionActual = obtenerVersionCacheEmpresas();
+
+      if (versionActual === versionComprobada) break;
+
+      versionComprobada = versionActual;
+      resProv = await consultarEmpresasMaul();
+
+      if (!estaVigente()) return;
+    }
+
+    if (obtenerVersionCacheEmpresas() !== versionComprobada) {
+      throw new Error('El catálogo cambió durante la carga.');
+    }
+
+    const provs = new Set();
+
+    resProv.data.forEach((item) => {
+      const provinciasStr =
+        getValueByFlexibleKey(item, 'Provincias') || '';
+
+      provinciasStr
+        .split(',')
+        .map((p) => p.trim())
+        .filter(Boolean)
+        .forEach((p) => provs.add(p));
+    });
+
+    setListaProvincias(Array.from(provs).sort());
+
+    const usuariosNormalizados = (resUsers.data || []).map((u) => {
+      const rolRaw = (u['Rol'] || '').toString().trim();
+      const rol = rolRaw.toUpperCase();
+
+      let provincia =
+        (u['Provincia asignada'] || '').toString().trim();
+
+      if (rol === 'ADMIN' || rol === 'REGIONAL') {
+        provincia = 'Todas';
+      }
+
+      return {
+        ...u,
+        Usuario: (u['Usuario'] || '').toString().trim(),
+        Rol: rol,
+        'Provincia asignada': provincia,
+      };
+    });
+
+    setUsuariosOriginales(usuariosNormalizados);
+
+    setEditedUsuarios(
+      JSON.parse(JSON.stringify(usuariosNormalizados))
+    );
+
+  } catch (err) {
+    if (!estaVigente()) return;
+
+    console.error(err);
+    setError('Error al cargar usuarios o provincias.');
+
+  } finally {
+    if (estaVigente()) {
       setLoading(false);
     }
-  };
+  }
+};
+
+
+ 
 
   const handleLocalChange = (e, index, field) => {
     const value = e.target.value;

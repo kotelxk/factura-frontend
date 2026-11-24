@@ -9,6 +9,7 @@ import AddIcon from '@mui/icons-material/Add';
 import DeleteForeverIcon from '@mui/icons-material/DeleteForever';
 import BusinessIcon from '@mui/icons-material/Business';
 import SaveIcon from '@mui/icons-material/Save';
+import { invalidarCacheEmpresas } from '../services/empresasCache';
 
 const ConfigurarProvincias = () => {
   const [loading, setLoading] = useState(true);
@@ -212,6 +213,8 @@ const procesarProvinciaIngresada = (provinciaIngresada) => {
     );
 
     setSuccess('Nueva empresa registrada correctamente.');
+        invalidarCacheEmpresas();
+
     setNuevaEmpresaData({
       Empresa: '',
       RUT: '',
@@ -234,9 +237,14 @@ const procesarProvinciaIngresada = (provinciaIngresada) => {
     if (!window.confirm(`¿Eliminar "${valorEmpresa}" permanentemente?`)) return;
 
     try {
-      await axios.delete(`${API_URL}/${encodeURIComponent(keyEmpresa)}/${encodeURIComponent(valorEmpresa)}`);
-      setSuccess(`Empresa "${valorEmpresa}" eliminada.`);
-      fetchData();
+      await axios.delete(
+  `${API_URL}/${encodeURIComponent(keyEmpresa)}/${encodeURIComponent(valorEmpresa)}`
+);
+
+invalidarCacheEmpresas();
+
+setSuccess(`Empresa "${valorEmpresa}" eliminada.`);
+fetchData();
     } catch (err) {
       console.error(err);
       setError('No se pudo eliminar la empresa.');
@@ -261,6 +269,7 @@ const procesarProvinciaIngresada = (provinciaIngresada) => {
         { data: { [keyProvincias]: valorFinal } },
         { headers: { 'Content-Type': 'application/json' } }
       );
+      invalidarCacheEmpresas();
 
       setSuccess('Provincia eliminada.');
       fetchData();
@@ -298,6 +307,7 @@ const textoNueva = procesarProvinciaIngresada(textoNuevaOriginal);
         { data: { [keyProvincias]: valorFinal } },
         { headers: { 'Content-Type': 'application/json' } }
       );
+      invalidarCacheEmpresas();
 
       setSuccess('Provincia añadida.');
       setNuevaProvincia({ ...nuevaProvincia, [empresaIndex]: '' });
@@ -326,6 +336,7 @@ const textoNueva = procesarProvinciaIngresada(textoNuevaOriginal);
         { data: { [keyTipoServicio]: nuevoTipo } },
         { headers: { 'Content-Type': 'application/json' } }
       );
+invalidarCacheEmpresas();
 
       setSuccess('Tipo de servicio actualizado.');
       fetchData();

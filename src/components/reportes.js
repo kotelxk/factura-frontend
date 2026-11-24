@@ -1,6 +1,10 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import axios from 'axios';
 import {
+  consultarEmpresasMaul,
+  obtenerVersionCacheEmpresas
+} from '../services/empresasCache';
+import {
   Alert,
   Box,
   Button,
@@ -190,31 +194,67 @@ const Reportes = () => {
   const [anioInforme, setAnioInforme] = useState('');
 
   const API_FACTURAS = 'https://sheetdb.io/api/v1/6wkqajspesw41';
-  const API_EMPRESAS = 'https://sheetdb.io/api/v1/w3bi3nugb8x4b';
 
-  useEffect(() => {
-    const cargarDatos = async () => {
-      setLoading(true);
-      setError('');
+ 
+useEffect(() => {
+  let vigente = true;
 
-      try {
-        const [resFacturas, resEmpresas] = await Promise.all([
-          axios.get(`${API_FACTURAS}?t=${new Date().getTime()}`),
-          axios.get(`${API_EMPRESAS}?t=${new Date().getTime()}`),
-        ]);
+  const cargarDatos = async () => {
+    setLoading(true);
+    setError('');
 
-        setFacturas(resFacturas.data || []);
-        setEmpresasConfig(resEmpresas.data || []);
-      } catch (err) {
-        console.error(err);
-        setError('Error al cargar la información para reportes.');
-      } finally {
+    try {
+      const versionInicial = obtenerVersionCacheEmpresas();
+
+      const [resFacturas, empresasIniciales] = await Promise.all([
+        axios.get(`${API_FACTURAS}?t=${new Date().getTime()}`),
+        consultarEmpresasMaul()
+      ]);
+
+      if (!vigente) return;
+
+      let resEmpresas = empresasIniciales;
+      let versionComprobada = versionInicial;
+
+      for (let intento = 0; intento < 3; intento++) {
+        const versionActual = obtenerVersionCacheEmpresas();
+
+        if (versionActual === versionComprobada) break;
+
+        versionComprobada = versionActual;
+        resEmpresas = await consultarEmpresasMaul();
+
+        if (!vigente) return;
+      }
+
+      if (obtenerVersionCacheEmpresas() !== versionComprobada) {
+        throw new Error('El catálogo cambió durante la carga.');
+      }
+
+      setFacturas(resFacturas.data || []);
+      setEmpresasConfig(resEmpresas.data || []);
+
+    } catch (err) {
+      if (!vigente) return;
+
+      console.error(err);
+      setError('Error al cargar la información para reportes.');
+
+    } finally {
+      if (vigente) {
         setLoading(false);
       }
-    };
+    }
+  };
 
-    cargarDatos();
-  }, []);
+  cargarDatos();
+
+  return () => {
+    vigente = false;
+  };
+
+}, []);
+
 
   const catalogoServicioPorEmpresa = useMemo(() => {
     const mapa = {};

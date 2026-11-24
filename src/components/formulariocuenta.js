@@ -1,5 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+import {
+  consultarClientes,
+  obtenerVersionCacheClientes
+} from '../services/clientesCache';
 import {
   TextField,
   Button,
@@ -21,6 +24,10 @@ import {
 import { FaFileAlt, FaDollarSign, FaArrowLeft } from 'react-icons/fa';
 import { motion } from 'framer-motion';
 import { buscarCuentaPorDoc, crearCuenta } from '../services/sheetdb';
+import {
+  consultarEmpresas,
+  obtenerVersionCacheEmpresas
+} from '../services/empresasCache';
 const FormularioCuenta = ({ usuario, rol, provinciaAsignada }) => {
   const [loadingDatos, setLoadingDatos] = useState(true);
   const [opcionesSelector, setOpcionesSelector] = useState([]);
@@ -42,8 +49,6 @@ const FormularioCuenta = ({ usuario, rol, provinciaAsignada }) => {
   const [snackbarMessage, setSnackbarMessage] = useState('');
   const [snackbarSeverity, setSnackbarSeverity] = useState('success');
 
-  const API_EMPRESAS = 'https://sheetdb.io/api/v1/d3yv1kl25t2da';
-  const API_CLIENTES_USO = 'https://sheetdb.io/api/v1/mtu8oxl8r0yud';
 
   const isProvincial = rol === 'PROVINCIAL';
   const provinciaUsuario = (provinciaAsignada || '').trim();
@@ -79,19 +84,66 @@ const FormularioCuenta = ({ usuario, rol, provinciaAsignada }) => {
     }
   };
 
-  useEffect(() => {
-    cargarDatosExternos();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  
+
+  
+useEffect(() => {
+  let vigente = true;
 
   const cargarDatosExternos = async () => {
     setLoadingDatos(true);
 
     try {
-      const [resEmpresas, resClientes] = await Promise.all([
-        axios.get(API_EMPRESAS),
-        axios.get(API_CLIENTES_USO)
-      ]);
+   
+let versionEmpresas = obtenerVersionCacheEmpresas();
+let versionClientes = obtenerVersionCacheClientes();
+
+let [resEmpresas, resClientes] = await Promise.all([
+  consultarEmpresas(),
+  consultarClientes()
+]);
+
+if (!vigente) return;
+
+for (let intento = 0; intento < 3; intento++) {
+  const actualEmpresas = obtenerVersionCacheEmpresas();
+  const actualClientes = obtenerVersionCacheClientes();
+
+  if (
+    actualEmpresas === versionEmpresas &&
+    actualClientes === versionClientes
+  ) {
+    break;
+  }
+
+  const recargarEmpresas =
+    actualEmpresas !== versionEmpresas;
+
+  const recargarClientes =
+    actualClientes !== versionClientes;
+
+  versionEmpresas = actualEmpresas;
+  versionClientes = actualClientes;
+
+  [resEmpresas, resClientes] = await Promise.all([
+    recargarEmpresas
+      ? consultarEmpresas()
+      : Promise.resolve(resEmpresas),
+
+    recargarClientes
+      ? consultarClientes()
+      : Promise.resolve(resClientes)
+  ]);
+
+  if (!vigente) return;
+}
+
+if (
+  obtenerVersionCacheEmpresas() !== versionEmpresas ||
+  obtenerVersionCacheClientes() !== versionClientes
+) {
+  throw new Error('Los catálogos cambiaron durante la carga.');
+}
 
       setTodosLosClientes(resClientes.data);
 
@@ -99,7 +151,8 @@ const FormularioCuenta = ({ usuario, rol, provinciaAsignada }) => {
 
       resEmpresas.data.forEach((item) => {
         const empresa = getValueByFlexibleKey(item, 'Empresa');
-        const provinciasStr = getValueByFlexibleKey(item, 'Provincias') || '';
+        const provinciasStr =
+          getValueByFlexibleKey(item, 'Provincias') || '';
 
         if (!empresa) return;
 
@@ -110,7 +163,8 @@ const FormularioCuenta = ({ usuario, rol, provinciaAsignada }) => {
 
         if (isProvincial) {
           const provinciaPermitida = listaProvincias.find(
-            (prov) => normalizeStr(prov) === normalizeStr(provinciaUsuario)
+            (prov) =>
+              normalizeStr(prov) === normalizeStr(provinciaUsuario)
           );
 
           if (provinciaPermitida) {
@@ -149,14 +203,26 @@ const FormularioCuenta = ({ usuario, rol, provinciaAsignada }) => {
         setProvincia(opcionInicial.provincia);
       }
     } catch (err) {
+      if (!vigente) return;
+
       console.error(err);
       setSnackbarMessage('Error de conexión con las APIs.');
       setSnackbarSeverity('error');
       setSnackbarOpen(true);
     } finally {
-      setLoadingDatos(false);
+      if (vigente) {
+        setLoadingDatos(false);
+      }
     }
   };
+
+  cargarDatosExternos();
+
+  return () => {
+    vigente = false;
+  };
+}, [isProvincial, provinciaUsuario]);
+
 
   const handleContinuarPaso2 = () => {
     if (!seleccionPrevia) return;

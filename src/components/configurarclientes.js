@@ -1,11 +1,15 @@
-import React, { useEffect, useState } from 'react';
-import axios from 'axios';
+import React, { useEffect, useRef, useState } from 'react';import axios from 'axios';
 import {
   Container, Typography, Table, TableBody, TableCell, TableContainer,
   TableHead, TableRow, TextField, Button, Box, CircularProgress,
   Snackbar, Alert, Stack, Paper, Divider, Select, MenuItem,
   FormControl, InputLabel
 } from '@mui/material';
+import {
+  consultarEmpresas,
+  obtenerVersionCacheEmpresas
+} from '../services/empresasCache';
+import { invalidarCacheClientes } from '../services/clientesCache';
 
 const ConfigurarClientes = () => {
   const [loading, setLoading] = useState(true);
@@ -17,7 +21,6 @@ const ConfigurarClientes = () => {
   const [mapaProvincias, setMapaProvincias] = useState([]);
 
   const API_CLIENTES_CONFIG = 'https://sheetdb.io/api/v1/jyp4vv5ft2fq1';
-  const API_PROVINCIAS = 'https://sheetdb.io/api/v1/d3yv1kl25t2da';
 
   const [nuevoCliente, setNuevoCliente] = useState({
     'Empresa': '',
@@ -26,9 +29,18 @@ const ConfigurarClientes = () => {
     'Provincia': ''
   });
 
-  useEffect(() => {
-    cargarTodo();
-  }, []);
+ const montado = useRef(false);
+const idCarga = useRef(0);
+
+useEffect(() => {
+  montado.current = true;
+
+  cargarTodo();
+
+  return () => {
+    montado.current = false;
+  };
+}, []);
 
   // --- LÓGICA DE ORDENAMIENTO (APILAR) ---
   const ordenarLista = (lista) => {
@@ -46,23 +58,64 @@ const ConfigurarClientes = () => {
     });
   };
 
-  const cargarTodo = async () => {
-    setLoading(true);
-    try {
-      const [resClientes, resProvincias] = await Promise.all([
-        axios.get(API_CLIENTES_CONFIG),
-        axios.get(API_PROVINCIAS)
-      ]);
-      const listaOrdenada = ordenarLista(resClientes.data);
-      setClientesOriginales(listaOrdenada);
-      setEditedClientes(JSON.parse(JSON.stringify(listaOrdenada)));
-      setMapaProvincias(resProvincias.data);
-    } catch (err) {
-      setError('Error al sincronizar datos.');
-    } finally {
+  
+const cargarTodo = async () => {
+  if (!montado.current) return;
+
+  const idActual = ++idCarga.current;
+
+  const estaVigente = () =>
+    montado.current && idCarga.current === idActual;
+
+  setLoading(true);
+
+  try {
+    const versionInicial = obtenerVersionCacheEmpresas();
+
+    const [resClientes, empresasIniciales] = await Promise.all([
+      axios.get(API_CLIENTES_CONFIG),
+      consultarEmpresas()
+    ]);
+
+    if (!estaVigente()) return;
+
+    let resProvincias = empresasIniciales;
+    let versionComprobada = versionInicial;
+
+    for (let intento = 0; intento < 3; intento++) {
+      const versionActual = obtenerVersionCacheEmpresas();
+
+      if (versionActual === versionComprobada) break;
+
+      versionComprobada = versionActual;
+      resProvincias = await consultarEmpresas();
+
+      if (!estaVigente()) return;
+    }
+
+    if (obtenerVersionCacheEmpresas() !== versionComprobada) {
+      throw new Error('El catálogo cambió durante la carga.');
+    }
+
+    const listaOrdenada = ordenarLista(resClientes.data);
+
+    setClientesOriginales(listaOrdenada);
+    setEditedClientes(JSON.parse(JSON.stringify(listaOrdenada)));
+    setMapaProvincias(resProvincias.data);
+
+  } catch (err) {
+    if (!estaVigente()) return;
+
+    console.error(err);
+    setError('Error al sincronizar datos.');
+
+  } finally {
+    if (estaVigente()) {
       setLoading(false);
     }
-  };
+  }
+};
+
 
   const getRealKey = (obj, keyName) => {
     if (!obj) return keyName;
@@ -99,6 +152,7 @@ const ConfigurarClientes = () => {
         [getRealKey(clientesOriginales[0] || {}, 'Provincia')]: nuevoCliente.Provincia
       };
       await axios.post(API_CLIENTES_CONFIG, { data: [registro] });
+invalidarCacheClientes();
       setSuccess('Cliente agregado y organizado en la lista.');
       setNuevoCliente({ Empresa: '', 'Cliente asociado': '', Direccion: '', Provincia: '' });
       cargarTodo();
@@ -111,6 +165,7 @@ const ConfigurarClientes = () => {
     const idCol = getRealKey(original, 'Cliente asociado');
     try {
       await axios.put(`${API_CLIENTES_CONFIG}/${idCol}/${encodeURIComponent(original[idCol])}`, { data: actualizado });
+invalidarCacheClientes();
       setSuccess('Cambios guardados.');
       cargarTodo();
     } catch (err) { setError('Error al actualizar.'); }
@@ -122,6 +177,7 @@ const ConfigurarClientes = () => {
     if (!window.confirm(`¿Eliminar definitivamente al cliente ${original[idCol]}?`)) return;
     try {
       await axios.delete(`${API_CLIENTES_CONFIG}/${idCol}/${encodeURIComponent(original[idCol])}`);
+invalidarCacheClientes();
       setSuccess('Cliente eliminado de la base de datos.');
       cargarTodo();
     } catch (err) { setError('Error al eliminar.'); }

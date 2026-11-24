@@ -10,7 +10,10 @@ import AttachFileIcon from '@mui/icons-material/AttachFile';
 import { motion } from 'framer-motion';
 import axios from 'axios';
 import { actualizarCuentaPorDoc } from '../services/sheetdb';
-
+import {
+  consultarEmpresas,
+  obtenerVersionCacheEmpresas
+} from '../services/empresasCache';
 const EnviarPago = ({ usuario, rol, provinciaAsignada }) => {
   const [paso, setPaso] = useState(1);
   const [loadingDatos, setLoadingDatos] = useState(true);
@@ -32,7 +35,6 @@ const EnviarPago = ({ usuario, rol, provinciaAsignada }) => {
   const [snackbarSeverity, setSnackbarSeverity] = useState('info');
 
   const API_CUENTAS = 'https://sheetdb.io/api/v1/zlfy6np1k0lrt';
-  const API_EMPRESAS = 'https://sheetdb.io/api/v1/d3yv1kl25t2da';
   const API_PDF = 'https://148.116.105.38.nip.io';
 
   const isProvincial = rol === 'PROVINCIAL';
@@ -90,72 +92,122 @@ const EnviarPago = ({ usuario, rol, provinciaAsignada }) => {
     return res.data;
   };
 
-  useEffect(() => {
-    const cargarDatos = async () => {
-      setLoadingDatos(true);
-      try {
-        const [resCuentas, resEmpresas] = await Promise.all([
-          axios.get(`${API_CUENTAS}?t=${new Date().getTime()}`),
-          axios.get(`${API_EMPRESAS}?t=${new Date().getTime()}`)
-        ]);
+  
+useEffect(() => {
+  let vigente = true;
 
-        const cuentasBase = isProvincial
-          ? resCuentas.data.filter(
-              (c) => normalizeStr(c['Provincia']) === normalizeStr(provinciaUsuario)
-            )
-          : resCuentas.data;
+  const cargarDatos = async () => {
+    setLoadingDatos(true);
 
-        setCuentas(cuentasBase);
+    try {
+      const versionInicial = obtenerVersionCacheEmpresas();
 
-        let opcionesCombo = [];
+const [resCuentas, empresasIniciales] = await Promise.all([
+  axios.get(`${API_CUENTAS}?t=${new Date().getTime()}`),
+  consultarEmpresas()
+]);
 
-        resEmpresas.data.forEach((item) => {
-          const emp = getValueByFlexibleKey(item, 'Empresa');
-          const provs = getValueByFlexibleKey(item, 'Provincias') || '';
-          if (!emp) return;
+if (!vigente) return;
 
-          const listaProvincias = provs
-            .split(',')
-            .map((p) => p.trim())
-            .filter(Boolean);
+let resEmpresas = empresasIniciales;
+let versionComprobada = versionInicial;
 
-          if (isProvincial) {
-            const provinciaPermitida = listaProvincias.find(
-              (prov) => normalizeStr(prov) === normalizeStr(provinciaUsuario)
-            );
+for (let intento = 0; intento < 3; intento++) {
+  const versionActual = obtenerVersionCacheEmpresas();
 
-            if (provinciaPermitida) {
-              opcionesCombo.push({
-                label: `${emp} - ${provinciaPermitida}`,
-                value: `${emp}|${provinciaPermitida}`
-              });
-            }
-          } else {
-            opcionesCombo.push({ label: `${emp} - Regional`, value: `${emp}|Regional` });
+  if (versionActual === versionComprobada) break;
 
-            listaProvincias.forEach((p) => {
-              opcionesCombo.push({ label: `${emp} - ${p}`, value: `${emp}|${p}` });
+  versionComprobada = versionActual;
+  resEmpresas = await consultarEmpresas();
+
+  if (!vigente) return;
+}
+
+if (obtenerVersionCacheEmpresas() !== versionComprobada) {
+  throw new Error('El catálogo cambió durante la carga.');
+}
+
+      const cuentasBase = isProvincial
+        ? resCuentas.data.filter(
+            (c) =>
+              normalizeStr(c['Provincia']) ===
+              normalizeStr(provinciaUsuario)
+          )
+        : resCuentas.data;
+
+      setCuentas(cuentasBase);
+
+      let opcionesCombo = [];
+
+      resEmpresas.data.forEach((item) => {
+        const emp = getValueByFlexibleKey(item, 'Empresa');
+        const provs =
+          getValueByFlexibleKey(item, 'Provincias') || '';
+
+        if (!emp) return;
+
+        const listaProvincias = provs
+          .split(',')
+          .map((p) => p.trim())
+          .filter(Boolean);
+
+        if (isProvincial) {
+          const provinciaPermitida = listaProvincias.find(
+            (prov) =>
+              normalizeStr(prov) ===
+              normalizeStr(provinciaUsuario)
+          );
+
+          if (provinciaPermitida) {
+            opcionesCombo.push({
+              label: `${emp} - ${provinciaPermitida}`,
+              value: `${emp}|${provinciaPermitida}`
             });
           }
-        });
+        } else {
+          opcionesCombo.push({
+            label: `${emp} - Regional`,
+            value: `${emp}|Regional`
+          });
 
-        setOpcionesSelector(opcionesCombo);
-
-        if (isProvincial && opcionesCombo.length > 0) {
-          setSeleccionPrevia(opcionesCombo[0].value);
+          listaProvincias.forEach((p) => {
+            opcionesCombo.push({
+              label: `${emp} - ${p}`,
+              value: `${emp}|${p}`
+            });
+          });
         }
-      } catch (err) {
-        console.error(err);
-        setSnackbarMessage('Error al cargar datos.');
-        setSnackbarSeverity('error');
-        setSnackbarOpen(true);
-      } finally {
+      });
+
+      setOpcionesSelector(opcionesCombo);
+
+      if (isProvincial && opcionesCombo.length > 0) {
+        setSeleccionPrevia(opcionesCombo[0].value);
+      }
+
+    } catch (err) {
+      if (!vigente) return;
+
+      console.error(err);
+      setSnackbarMessage('Error al cargar datos.');
+      setSnackbarSeverity('error');
+      setSnackbarOpen(true);
+
+    } finally {
+      if (vigente) {
         setLoadingDatos(false);
       }
-    };
+    }
+  };
 
-    cargarDatos();
-  }, [isProvincial, provinciaUsuario]);
+  cargarDatos();
+
+  return () => {
+    vigente = false;
+  };
+
+}, [isProvincial, provinciaUsuario]);
+
 
   useEffect(() => {
     let resultado = cuentas;

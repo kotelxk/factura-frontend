@@ -9,7 +9,7 @@ import { motion } from 'framer-motion';
 import { FaClipboardList, FaArrowLeft } from 'react-icons/fa';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
-
+import { consultarEmpresas, obtenerVersionCacheEmpresas } from '../services/empresasCache';
 const HistorialCuentas = ({ rol, provinciaAsignada }) => {
   const [cuentas, setCuentas] = useState([]);
   const [baseFilteredCuentas, setBaseFilteredCuentas] = useState([]);
@@ -26,7 +26,6 @@ const HistorialCuentas = ({ rol, provinciaAsignada }) => {
   const navigate = useNavigate();
 
   const API_CUENTAS = 'https://sheetdb.io/api/v1/wp5un7ffg6ifc';
-  const API_EMPRESAS = 'https://sheetdb.io/api/v1/d3yv1kl25t2da';
 
   const isProvincial = rol === 'PROVINCIAL';
   const provinciaUsuario = (provinciaAsignada || '').trim();
@@ -69,18 +68,48 @@ const HistorialCuentas = ({ rol, provinciaAsignada }) => {
 };
 
   useEffect(() => {
-    cargarDatosExternos();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+    let vigente = true;
 
-  const cargarDatosExternos = async () => {
+    cargarDatosExternos(() => vigente);
+
+    return () => {
+      vigente = false;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isProvincial, provinciaUsuario]);
+
+  const cargarDatosExternos = async (estaVigente) => {
     setLoadingDatos(true);
 
     try {
-      const [resCuentas, resEmpresas] = await Promise.all([
-        axios.get(API_CUENTAS),
-        axios.get(API_EMPRESAS)
-      ]);
+      
+const versionInicial = obtenerVersionCacheEmpresas();
+
+const [resCuentas, empresasIniciales] = await Promise.all([
+  axios.get(API_CUENTAS),
+  consultarEmpresas()
+]);
+
+if (!estaVigente()) return;
+
+let resEmpresas = empresasIniciales;
+let versionComprobada = versionInicial;
+
+for (let intento = 0; intento < 3; intento++) {
+  const versionActual = obtenerVersionCacheEmpresas();
+
+  if (versionActual === versionComprobada) break;
+
+  versionComprobada = versionActual;
+  resEmpresas = await consultarEmpresas();
+
+  if (!estaVigente()) return;
+}
+
+if (obtenerVersionCacheEmpresas() !== versionComprobada) {
+  throw new Error('El catálogo cambió durante la carga.');
+}
+
 
       // Si es provincial, desde el origen solo dejamos sus cuentas
       const cuentasBase = isProvincial
@@ -146,10 +175,14 @@ const HistorialCuentas = ({ rol, provinciaAsignada }) => {
         setSeleccionPrevia(opcionesCombo[0].value);
       }
     } catch (err) {
-      setError('Error de conexión con las APIs al cargar los datos.');
-      console.error(err);
+      if (estaVigente()) {
+        setError('Error de conexión con las APIs al cargar los datos.');
+        console.error(err);
+      }
     } finally {
-      setLoadingDatos(false);
+      if (estaVigente()) {
+        setLoadingDatos(false);
+      }
     }
   };
 

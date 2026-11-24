@@ -17,6 +17,8 @@ import ConfigurarClientes from './components/configurarclientes';
 import ConfigurarProvincias from './components/configurarprovincias';
 import RegistrarUsuario from './components/registrarusuario';
 import MostrarUsuarios from './components/mostrarusuarios';
+import { reiniciarCacheEmpresas } from './services/empresasCache';
+import { reiniciarCacheClientes } from './services/clientesCache';
 
 function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -52,12 +54,15 @@ function App() {
   };
 
   const handleLogout = () => {
-    setIsAuthenticated(false);
-    setUsuario('');
-    setRol('');
-    setProvinciaAsignada('');
-    localStorage.removeItem('session');
-  };
+  reiniciarCacheEmpresas();
+  reiniciarCacheClientes();
+
+  setIsAuthenticated(false);
+  setUsuario('');
+  setRol('');
+  setProvinciaAsignada('');
+  localStorage.removeItem('session');
+};
 
   const isAdmin = rol === 'ADMIN';
   const isRegional = rol === 'REGIONAL';

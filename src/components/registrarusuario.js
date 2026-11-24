@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import bcrypt from 'bcryptjs';
+import { consultarEmpresasMaul } from '../services/empresasCache';
 import {
   Container, Typography, TextField, Button, Box, CircularProgress,
   Snackbar, Alert, Paper, Select, MenuItem, FormControl, InputLabel,
@@ -17,7 +18,6 @@ const RegistrarUsuario = () => {
 
   const [listaProvincias, setListaProvincias] = useState([]);
 
-  const API_PROVINCIAS = 'https://sheetdb.io/api/v1/w3bi3nugb8x4b';
   const API_USUARIOS = 'https://sheetdb.io/api/v1/g9pctxnlt3t37';
 
   const [formData, setFormData] = useState({
@@ -34,18 +34,23 @@ const RegistrarUsuario = () => {
     return foundKey ? obj[foundKey] : null;
   };
 
-  useEffect(() => {
-    cargarProvincias();
-  }, []);
+  
+useEffect(() => {
+  let vigente = true;
 
   const cargarProvincias = async () => {
     setLoadingProvincias(true);
+
     try {
-      const res = await axios.get(`${API_PROVINCIAS}?t=${new Date().getTime()}`);
+      const res = await consultarEmpresasMaul();
+
+      if (!vigente) return;
+
       const provinciasUnicas = new Set();
 
       (res.data || []).forEach((item) => {
-        const provinciasStr = getValueByFlexibleKey(item, 'Provincias') || '';
+        const provinciasStr =
+          getValueByFlexibleKey(item, 'Provincias') || '';
 
         provinciasStr
           .split(',')
@@ -54,14 +59,33 @@ const RegistrarUsuario = () => {
           .forEach((p) => provinciasUnicas.add(p));
       });
 
-      setListaProvincias(Array.from(provinciasUnicas).sort());
+      setListaProvincias(
+        Array.from(provinciasUnicas).sort()
+      );
+
     } catch (err) {
+      if (!vigente) return;
+
       console.error(err);
       setError('Error al cargar la lista de provincias.');
+
     } finally {
-      setLoadingProvincias(false);
+      if (vigente) {
+        setLoadingProvincias(false);
+      }
     }
   };
+
+  cargarProvincias();
+
+  return () => {
+    vigente = false;
+  };
+
+}, []);
+
+
+ 
 
   const handleChange = (e) => {
     const { name, value } = e.target;

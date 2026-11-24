@@ -9,7 +9,10 @@ import { FaFileAlt, FaCalendarAlt, FaArrowLeft, FaPenNib, FaUserTag } from 'reac
 import { motion } from 'framer-motion';
 import axios from 'axios';
 import { actualizarCuentaPorDoc } from '../services/sheetdb';
-
+import {
+  consultarEmpresas,
+  obtenerVersionCacheEmpresas
+} from '../services/empresasCache';
 const EnviarFirma = ({ usuario, rol, provinciaAsignada }) => {
   const [paso, setPaso] = useState(1);
   const [loadingDatos, setLoadingDatos] = useState(true);
@@ -29,7 +32,6 @@ const EnviarFirma = ({ usuario, rol, provinciaAsignada }) => {
   const [snackbarSeverity, setSnackbarSeverity] = useState('info');
 
   const API_CUENTAS = 'https://sheetdb.io/api/v1/zlfy6np1k0lrt';
-  const API_EMPRESAS = 'https://sheetdb.io/api/v1/d3yv1kl25t2da';
 
   const isProvincial = rol === 'PROVINCIAL';
   const provinciaUsuario = (provinciaAsignada || '').trim();
@@ -82,85 +84,123 @@ const EnviarFirma = ({ usuario, rol, provinciaAsignada }) => {
     }
   };
 
-  useEffect(() => {
-    const cargarDatos = async () => {
-      setLoadingDatos(true);
-      try {
-        const [resCuentas, resEmpresas] = await Promise.all([
-          axios.get(`${API_CUENTAS}?t=${new Date().getTime()}`),
-          axios.get(`${API_EMPRESAS}?t=${new Date().getTime()}`)
-        ]);
+  
+useEffect(() => {
+  let vigente = true;
 
-        const cuentasBase = isProvincial
-          ? resCuentas.data.filter(
-              (cuenta) =>
-                normalizeStr(cuenta['Provincia']) === normalizeStr(provinciaUsuario)
-            )
-          : resCuentas.data;
+  const cargarDatos = async () => {
+    setLoadingDatos(true);
 
-        setCuentas(cuentasBase);
+    try {
+      const versionInicial = obtenerVersionCacheEmpresas();
 
-        let opcionesCombo = [];
+const [resCuentas, empresasIniciales] = await Promise.all([
+  axios.get(`${API_CUENTAS}?t=${new Date().getTime()}`),
+  consultarEmpresas()
+]);
 
-        resEmpresas.data.forEach((item) => {
-          const empresa = getValueByFlexibleKey(item, 'Empresa');
-          const provinciasStr = getValueByFlexibleKey(item, 'Provincias') || '';
-          if (!empresa) return;
+if (!vigente) return;
 
-          const listaProvincias = provinciasStr
-            .split(',')
-            .map((p) => p.trim())
-            .filter(Boolean);
+let resEmpresas = empresasIniciales;
+let versionComprobada = versionInicial;
 
-          if (isProvincial) {
-            const provinciaPermitida = listaProvincias.find(
-              (prov) => normalizeStr(prov) === normalizeStr(provinciaUsuario)
-            );
+for (let intento = 0; intento < 3; intento++) {
+  const versionActual = obtenerVersionCacheEmpresas();
 
-            if (provinciaPermitida) {
-              opcionesCombo.push({
-                label: `${empresa} - ${provinciaPermitida}`,
-                empresa,
-                provincia: provinciaPermitida,
-                value: `${empresa}|${provinciaPermitida}`
-              });
-            }
-          } else {
+  if (versionActual === versionComprobada) break;
+
+  versionComprobada = versionActual;
+  resEmpresas = await consultarEmpresas();
+
+  if (!vigente) return;
+}
+
+if (obtenerVersionCacheEmpresas() !== versionComprobada) {
+  throw new Error('El catálogo cambió durante la carga.');
+}
+
+      const cuentasBase = isProvincial
+        ? resCuentas.data.filter(
+            (cuenta) =>
+              normalizeStr(cuenta['Provincia']) ===
+              normalizeStr(provinciaUsuario)
+          )
+        : resCuentas.data;
+
+      setCuentas(cuentasBase);
+
+      let opcionesCombo = [];
+
+      resEmpresas.data.forEach((item) => {
+        const empresa = getValueByFlexibleKey(item, 'Empresa');
+        const provinciasStr =
+          getValueByFlexibleKey(item, 'Provincias') || '';
+
+        if (!empresa) return;
+
+        const listaProvincias = provinciasStr
+          .split(',')
+          .map((p) => p.trim())
+          .filter(Boolean);
+
+        if (isProvincial) {
+          const provinciaPermitida = listaProvincias.find(
+            (prov) =>
+              normalizeStr(prov) === normalizeStr(provinciaUsuario)
+          );
+
+          if (provinciaPermitida) {
             opcionesCombo.push({
-              label: `${empresa} - Regional`,
+              label: `${empresa} - ${provinciaPermitida}`,
               empresa,
-              provincia: 'Regional',
-              value: `${empresa}|Regional`
-            });
-
-            listaProvincias.forEach((prov) => {
-              opcionesCombo.push({
-                label: `${empresa} - ${prov}`,
-                empresa,
-                provincia: prov,
-                value: `${empresa}|${prov}`
-              });
+              provincia: provinciaPermitida,
+              value: `${empresa}|${provinciaPermitida}`
             });
           }
-        });
+        } else {
+          opcionesCombo.push({
+            label: `${empresa} - Regional`,
+            empresa,
+            provincia: 'Regional',
+            value: `${empresa}|Regional`
+          });
 
-        setOpcionesSelector(opcionesCombo);
-
-        if (isProvincial && opcionesCombo.length > 0) {
-          setSeleccionPrevia(opcionesCombo[0].value);
+          listaProvincias.forEach((prov) => {
+            opcionesCombo.push({
+              label: `${empresa} - ${prov}`,
+              empresa,
+              provincia: prov,
+              value: `${empresa}|${prov}`
+            });
+          });
         }
-      } catch (err) {
-        console.error(err);
-        setSnackbarMessage('Error al conectar con las APIs.');
-        setSnackbarSeverity('error');
-        setSnackbarOpen(true);
-      } finally {
+      });
+
+      setOpcionesSelector(opcionesCombo);
+
+      if (isProvincial && opcionesCombo.length > 0) {
+        setSeleccionPrevia(opcionesCombo[0].value);
+      }
+    } catch (err) {
+      if (!vigente) return;
+
+      console.error(err);
+      setSnackbarMessage('Error al conectar con las APIs.');
+      setSnackbarSeverity('error');
+      setSnackbarOpen(true);
+    } finally {
+      if (vigente) {
         setLoadingDatos(false);
       }
-    };
+    }
+  };
 
-    cargarDatos();
-  }, [isProvincial, provinciaUsuario]);
+  cargarDatos();
+
+  return () => {
+    vigente = false;
+  };
+}, [isProvincial, provinciaUsuario]);
 
   useEffect(() => {
     let resultado = cuentas;

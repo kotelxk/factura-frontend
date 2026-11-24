@@ -1,6 +1,14 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useParams, useLocation, useNavigate } from 'react-router-dom';
 import {
+  consultarClientes,
+  obtenerVersionCacheClientes
+} from '../services/clientesCache';
+import {
+  consultarEmpresasMaul,
+  obtenerVersionCacheEmpresas
+} from '../services/empresasCache';
+import {
   Container,
   Typography,
   Paper,
@@ -37,8 +45,6 @@ const ModificarCuenta = ({ rol, provinciaAsignada }) => {
   const [nuevoPdf, setNuevoPdf] = useState(null);
   const [subiendoPdf, setSubiendoPdf] = useState(false);
 
-  const API_EMPRESAS = 'https://sheetdb.io/api/v1/w3bi3nugb8x4b';
-  const API_CLIENTES_USO = 'https://sheetdb.io/api/v1/mtu8oxl8r0yud';
 
   // AJUSTA esto si tu backend usa otra URL
   const API_PDF = 'https://148.116.105.38.nip.io';
@@ -75,53 +81,124 @@ const ModificarCuenta = ({ rol, provinciaAsignada }) => {
     return foundKey ? obj[foundKey] : null;
   };
 
-  useEffect(() => {
-    const cargarTodo = async () => {
-      setLoading(true);
-      setLoadingCatalogos(true);
-      setError('');
+ 
+useEffect(() => {
+  let vigente = true;
 
-      try {
-        let datosCuenta = location.state?.cuenta || null;
+  const cargarTodo = async () => {
+    setLoading(true);
+    setLoadingCatalogos(true);
+    setError('');
 
-        if (!datosCuenta) {
-          const documentoDecodificado = decodeURIComponent(id);
-          const cuentasEncontradas = await buscarCuentaPorDoc(documentoDecodificado);
+    try {
+      let datosCuenta = location.state?.cuenta || null;
 
-          if (cuentasEncontradas && cuentasEncontradas.length > 0) {
-            datosCuenta = cuentasEncontradas[0];
-          } else {
-            throw new Error('Cuenta no encontrada.');
-          }
+      if (!datosCuenta) {
+        const documentoDecodificado = decodeURIComponent(id);
+
+        const cuentasEncontradas =
+          await buscarCuentaPorDoc(documentoDecodificado);
+
+        if (!vigente) return;
+
+        if (cuentasEncontradas && cuentasEncontradas.length > 0) {
+          datosCuenta = cuentasEncontradas[0];
+        } else {
+          throw new Error('Cuenta no encontrada.');
         }
+      }
 
-        if (
-          isProvincial &&
-          normalizeStr(datosCuenta['Provincia']) !== normalizeStr(provinciaUsuario)
-        ) {
-          throw new Error('No tienes permiso para modificar cuentas de otra provincia.');
-        }
+      if (
+        isProvincial &&
+        normalizeStr(datosCuenta['Provincia']) !==
+          normalizeStr(provinciaUsuario)
+      ) {
+        throw new Error(
+          'No tienes permiso para modificar cuentas de otra provincia.'
+        );
+      }
 
-        setCuenta(datosCuenta);
+      if (!vigente) return;
 
-        const [resEmpresas, resClientes] = await Promise.all([
-          axios.get(`${API_EMPRESAS}?t=${new Date().getTime()}`),
-          axios.get(`${API_CLIENTES_USO}?t=${new Date().getTime()}`),
-        ]);
+      setCuenta(datosCuenta);
 
-        setEmpresasConfig(resEmpresas.data || []);
-        setClientes(resClientes.data || []);
-      } catch (err) {
-        console.error(err);
-        setError(err.message || 'Error al obtener los datos.');
-      } finally {
+     
+let versionEmpresas = obtenerVersionCacheEmpresas();
+let versionClientes = obtenerVersionCacheClientes();
+
+let [resEmpresas, resClientes] = await Promise.all([
+  consultarEmpresasMaul(),
+  consultarClientes()
+]);
+
+if (!vigente) return;
+
+for (let intento = 0; intento < 3; intento++) {
+  const actualEmpresas = obtenerVersionCacheEmpresas();
+  const actualClientes = obtenerVersionCacheClientes();
+
+  if (
+    actualEmpresas === versionEmpresas &&
+    actualClientes === versionClientes
+  ) {
+    break;
+  }
+
+  const recargarEmpresas =
+    actualEmpresas !== versionEmpresas;
+
+  const recargarClientes =
+    actualClientes !== versionClientes;
+
+  versionEmpresas = actualEmpresas;
+  versionClientes = actualClientes;
+
+  [resEmpresas, resClientes] = await Promise.all([
+    recargarEmpresas
+      ? consultarEmpresasMaul()
+      : Promise.resolve(resEmpresas),
+
+    recargarClientes
+      ? consultarClientes()
+      : Promise.resolve(resClientes)
+  ]);
+
+  if (!vigente) return;
+}
+
+if (
+  obtenerVersionCacheEmpresas() !== versionEmpresas ||
+  obtenerVersionCacheClientes() !== versionClientes
+) {
+  throw new Error('Los catálogos cambiaron durante la carga.');
+}
+
+
+      setEmpresasConfig(resEmpresas.data || []);
+      setClientes(resClientes.data || []);
+
+    } catch (err) {
+      if (!vigente) return;
+
+      console.error(err);
+      setError(err.message || 'Error al obtener los datos.');
+
+    } finally {
+      if (vigente) {
         setLoading(false);
         setLoadingCatalogos(false);
       }
-    };
+    }
+  };
 
-    cargarTodo();
-  }, [id, isProvincial, provinciaUsuario, location.state]);
+  cargarTodo();
+
+  return () => {
+    vigente = false;
+  };
+
+}, [id, isProvincial, provinciaUsuario, location.state]);
+
 
   useEffect(() => {
     if (cuenta) {
