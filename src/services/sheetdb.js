@@ -20,10 +20,6 @@ export const FACTURAS_MODIFICAR =
 export const FACTURAS_KAKA =
   "https://sheetdb.io/api/v1/p8978jyevss5y";
 
-// API provisional: respaldo temporal
-export const FACTURAS_PROVISIONAL =
-  "https://sheetdb.io/api/v1/qa371cvkeyczm";
-
 export const COL_NUM_DOC = "Número de documento";
 
 // ===== USUARIOS =====
@@ -72,10 +68,9 @@ export async function buscarCuentaPorDoc(
   const inicio = turnoBusqueda++ % apis.length;
 
   const orden = [
-  ...apis.slice(inicio),
-  ...apis.slice(0, inicio),
-  FACTURAS_PROVISIONAL
-];
+    ...apis.slice(inicio),
+    ...apis.slice(0, inicio)
+  ];
 
   let ultimoError;
 

@@ -1,17 +1,23 @@
 
-import axios from "axios";
-
-import {
-  buscarCuentaPorDoc,
-  crearCuenta,
-  actualizarCuentaPorDoc,
-  COL_NUM_DOC
-} from "./sheetdb";
+let axios;
+let buscarCuentaPorDoc;
+let crearCuenta;
+let actualizarCuentaPorDoc;
+let COL_NUM_DOC;
 
 jest.mock("axios");
 
 beforeEach(() => {
-  jest.clearAllMocks();
+  // Aislar el contador de turnos y los bloqueos entre pruebas.
+  jest.resetModules();
+  axios = require("axios");
+  ({
+    buscarCuentaPorDoc,
+    crearCuenta,
+    actualizarCuentaPorDoc,
+    COL_NUM_DOC
+  } = require("./sheetdb"));
+  jest.resetAllMocks();
 
   // Simular que estamos en noviembre de 2026.
   jest.spyOn(Date, "now").mockReturnValue(
@@ -125,11 +131,11 @@ test("Si una API responde 429 utiliza la otra", async () => {
 
   expect(urls).toHaveLength(2);
 
-  // Comprobar que utilizó dos API distintas.
-  expect(new Set(urls).size).toBe(2);
+  expect(urls[0]).toContain("6wkqajspesw41/search");
+  expect(urls[1]).toContain("p8978jyevss5y/search");
 });
 
-test("Si las tres API se agotan informa un error", async () => {
+test("Si ambas API se agotan informa un error sin tercer intento", async () => {
   Date.now.mockReturnValue(Date.UTC(2026, 11, 4));
 
   axios.get.mockRejectedValue({
@@ -142,41 +148,49 @@ test("Si las tres API se agotan informa un error", async () => {
     response: { status: 429 }
   });
 
-  expect(axios.get).toHaveBeenCalledTimes(3);
-
-  const urls = axios.get.mock.calls.map(([url]) => url);
-
-  expect(urls.some(url =>
-    url.includes("6wkqajspesw41")
-  )).toBe(true);
-
-  expect(urls.some(url =>
-    url.includes("p8978jyevss5y")
-  )).toBe(true);
-
-  expect(urls[2]).toContain("qa371cvkeyczm");
-});
-
-test("Utiliza la API provisional cuando las otras fallan", async () => {
-  Date.now.mockReturnValue(Date.UTC(2026, 11, 6));
-
-  axios.get
-    .mockRejectedValueOnce({
-      response: { status: 429 }
-    })
-    .mockRejectedValueOnce({
-      response: { status: 429 }
-    })
-    .mockResolvedValueOnce({
-      data: []
-    });
+  expect(axios.get).toHaveBeenCalledTimes(2);
+  expect(axios.get.mock.calls[0][0]).toContain("6wkqajspesw41/search");
+  expect(axios.get.mock.calls[1][0]).toContain("p8978jyevss5y/search");
 
   await expect(
     buscarCuentaPorDoc("FACT-005")
+  ).rejects.toThrow("No hay API de búsqueda disponible temporalmente");
+
+  expect(axios.get).toHaveBeenCalledTimes(2);
+});
+
+test("En noviembre un 429 de colo no genera otro intento", async () => {
+  const ahora = Date.UTC(2026, 10, 27);
+  Date.now.mockReturnValue(ahora);
+
+  axios.get.mockRejectedValueOnce({
+    response: { status: 429 }
+  });
+
+  await expect(
+    buscarCuentaPorDoc("FACT-006")
+  ).rejects.toMatchObject({
+    response: { status: 429 }
+  });
+
+  expect(axios.get).toHaveBeenCalledTimes(1);
+  expect(axios.get.mock.calls[0][0]).toContain("6wkqajspesw41/search");
+
+  Date.now.mockReturnValue(ahora + 59999);
+
+  await expect(
+    buscarCuentaPorDoc("FACT-007")
+  ).rejects.toThrow("No hay API de búsqueda disponible temporalmente");
+
+  expect(axios.get).toHaveBeenCalledTimes(1);
+
+  Date.now.mockReturnValue(ahora + 60000);
+  axios.get.mockResolvedValueOnce({ data: [] });
+
+  await expect(
+    buscarCuentaPorDoc("FACT-008")
   ).resolves.toEqual([]);
 
-  expect(axios.get).toHaveBeenCalledTimes(3);
-
-  expect(axios.get.mock.calls[2][0])
-    .toContain("qa371cvkeyczm/search");
+  expect(axios.get).toHaveBeenCalledTimes(2);
+  expect(axios.get.mock.calls[1][0]).toContain("6wkqajspesw41/search");
 });
